@@ -1,0 +1,1 @@
+import {supabaseServer} from '@/lib/supabase-server';import {NextResponse} from 'next/server';export async function GET(){const s=await supabaseServer();await s.auth.signOut();return NextResponse.redirect(new URL('/',process.env.NEXT_PUBLIC_APP_URL||'http://localhost:3000'))}
