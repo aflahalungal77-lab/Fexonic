@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase-server";
 import AdminRestaurantList from "./AdminRestaurentList";
 
-const ADMIN_EMAIL = "YOUR_ADMIN_EMAIL@gmail.com";
+const ADMIN_EMAIL = "aflahalungal77@gmail.com";
 
 export default async function Admin() {
   const supabase = await supabaseServer();
@@ -12,21 +12,30 @@ export default async function Admin() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login");
+    redirect("/admin/login");
   }
 
-  if (user.email !== ADMIN_EMAIL) {
+  if (
+    !user.email ||
+    user.email.toLowerCase() !==
+      ADMIN_EMAIL.toLowerCase()
+  ) {
     redirect("/");
   }
 
-  const { data: restaurants } = await supabase
-    .from("restaurants")
-    .select(
-      "id,name,slug,is_active,created_at"
-    )
-    .order("created_at", {
-      ascending: false,
-    });
+  const { data: restaurants, error: restaurantError } =
+    await supabase
+      .from("restaurants")
+      .select(
+        "id,name,slug,is_active,created_at"
+      )
+      .order("created_at", {
+        ascending: false,
+      });
+
+  if (restaurantError) {
+    console.error(restaurantError);
+  }
 
   const { count: orderCount } = await supabase
     .from("orders")
@@ -37,14 +46,17 @@ export default async function Admin() {
 
   const restaurantList = restaurants || [];
 
-  const activeRestaurants = restaurantList.filter(
-    (restaurant) => restaurant.is_active
-  ).length;
+  const activeRestaurants =
+    restaurantList.filter(
+      (restaurant) => restaurant.is_active
+    ).length;
 
   return (
     <main className="container">
       <header className="top">
-        <b className="brand">FEXONIC ADMIN</b>
+        <b className="brand">
+          FEXONIC ADMIN
+        </b>
 
         <a
           className="btn light"
@@ -104,11 +116,9 @@ export default async function Admin() {
           marginTop: 18,
         }}
       >
-        <div className="list">
-          <AdminRestaurantList
-            restaurants={restaurantList}
-          />
-        </div>
+        <AdminRestaurantList
+          restaurants={restaurantList}
+        />
       </section>
     </main>
   );
