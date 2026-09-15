@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase-server";
 
-const ADMIN_EMAIL = "YOUR_ADMIN_EMAIL@gmail.com";
+const ADMIN_EMAIL = "aflahalungal77@gmail.com";
 
 export async function DELETE(
   _request: Request,
