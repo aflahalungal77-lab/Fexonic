@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase";
 
-const ADMIN_EMAIL = "aflahalungal77L@gmail.com";
+const ADMIN_EMAIL = "aflahalungal77@gmail.com";
 
 export default function AdminLogin() {
   const router = useRouter();
