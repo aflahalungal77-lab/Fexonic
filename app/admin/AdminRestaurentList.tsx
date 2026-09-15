@@ -48,13 +48,28 @@ export default function AdminRestaurantList({
         }
       );
 
-      const data = await response.json();
+      // Read as text first so HTML responses don't cause:
+      // "Unexpected token '<', '<!DOCTYPE'..."
+      const text = await response.text();
+
+      let data: any = {};
+
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(
+          `Server returned an invalid response (${response.status}). ` +
+            "Please make sure the latest deployment is active."
+        );
+      }
 
       if (!response.ok) {
         throw new Error(
           data?.error || "Failed to delete restaurant"
         );
       }
+
+      alert("Restaurant deleted successfully.");
 
       router.refresh();
     } catch (error: any) {
@@ -118,6 +133,10 @@ export default function AdminRestaurantList({
                       background: "#000",
                       color: "#fff",
                       border: "1px solid #333",
+                      cursor: deleting
+                        ? "not-allowed"
+                        : "pointer",
+                      opacity: deleting ? 0.6 : 1,
                     }}
                   >
                     {deleting ? "Deleting..." : "Delete"}

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase-server";
 
-const ADMIN_EMAIL = "aflahalungal77@gmail.com";
+const ADMIN_EMAIL = "YOUR_ADMIN_EMAIL@gmail.com";
 
 export async function DELETE(
   _request: Request,
@@ -21,7 +21,11 @@ export async function DELETE(
       );
     }
 
-    if (user.email !== ADMIN_EMAIL) {
+    if (
+      !user.email ||
+      user.email.toLowerCase() !==
+        ADMIN_EMAIL.toLowerCase()
+    ) {
       return NextResponse.json(
         { error: "Forbidden" },
         { status: 403 }
@@ -29,13 +33,6 @@ export async function DELETE(
     }
 
     const { id } = await params;
-
-    if (!id) {
-      return NextResponse.json(
-        { error: "Restaurant ID is required" },
-        { status: 400 }
-      );
-    }
 
     const { error } = await supabase.rpc(
       "delete_restaurant_as_platform_admin",
@@ -45,26 +42,22 @@ export async function DELETE(
     );
 
     if (error) {
-      console.error("Restaurant deletion error:", error);
-
       return NextResponse.json(
-        {
-          error: error.message || "Failed to delete restaurant",
-        },
+        { error: error.message },
         { status: 500 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: "Restaurant deleted successfully",
     });
   } catch (error: any) {
     console.error(error);
 
     return NextResponse.json(
       {
-        error: error?.message || "Internal server error",
+        error:
+          error?.message || "Failed to delete restaurant",
       },
       { status: 500 }
     );
