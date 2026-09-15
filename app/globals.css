@@ -1,17 +1,29 @@
 :root {
-  --bg: #f5f6f3;
+  --bg: #f4f4f1;
   --surface: #ffffff;
-  --surface-2: #fafbf9;
-  --text: #111311;
-  --muted: #737a75;
-  --line: #e5e8e4;
-  --line-dark: #d9ddd8;
-  --black: #111311;
-  --good: #15966a;
-  --bad: #d64545;
-  --warn: #c47a18;
+  --surface-2: #fafaf8;
+
+  --text: #101110;
+  --muted: #747973;
+
+  --line: #e5e7e3;
+  --line-dark: #d4d8d3;
+
+  --black: #101110;
+  --good: #168b63;
+  --bad: #d44747;
+  --warn: #b87518;
+
   --radius: 20px;
-  --shadow: 0 18px 50px rgba(17, 19, 17, 0.06);
+
+  --shadow-sm:
+    0 4px 18px rgba(16, 17, 16, 0.045);
+
+  --shadow:
+    0 18px 55px rgba(16, 17, 16, 0.07);
+
+  --shadow-lg:
+    0 30px 90px rgba(16, 17, 16, 0.12);
 }
 
 * {
@@ -22,12 +34,24 @@ html {
   scroll-behavior: smooth;
 }
 
+html,
+body {
+  min-height: 100%;
+}
+
 body {
   margin: 0;
+
   background:
-    radial-gradient(circle at 50% -10%, #ffffff 0, transparent 35%),
+    radial-gradient(
+      circle at 50% -15%,
+      rgba(255, 255, 255, 0.95) 0,
+      rgba(255, 255, 255, 0) 38%
+    ),
     var(--bg);
+
   color: var(--text);
+
   font-family:
     Inter,
     ui-sans-serif,
@@ -36,7 +60,14 @@ body {
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: #101110;
+  color: #fff;
 }
 
 a {
@@ -57,15 +88,12 @@ button {
 
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.55;
 }
 
-::selection {
-  background: #111311;
-  color: #fff;
-}
-
-/* ---------- Layout ---------- */
+/* =========================================================
+   LAYOUT
+========================================================= */
 
 .container {
   width: min(1180px, calc(100% - 40px));
@@ -74,16 +102,27 @@ button:disabled {
 
 .top {
   min-height: 76px;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
+
   gap: 20px;
 }
 
 .brand {
   font-size: 20px;
   font-weight: 950;
-  letter-spacing: -0.06em;
+  letter-spacing: -0.065em;
+
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.brand:hover {
+  opacity: 0.75;
+  transform: translateY(-1px);
 }
 
 .nav {
@@ -98,93 +137,162 @@ button:disabled {
 
 .hero h1 {
   max-width: 850px;
+
   margin: 10px 0 18px;
+
   font-size: clamp(42px, 7vw, 78px);
-  line-height: 0.98;
-  letter-spacing: -0.065em;
+  line-height: 0.96;
+
+  letter-spacing: -0.07em;
   font-weight: 950;
 }
 
 .hero p {
   max-width: 680px;
-  line-height: 1.7;
+
+  margin: 0;
+
+  color: var(--muted);
+
+  line-height: 1.75;
 }
+
+/* =========================================================
+   EYEBROW
+========================================================= */
 
 .eyebrow {
   color: #707770;
+
   font-size: 11px;
   font-weight: 900;
-  letter-spacing: 0.18em;
+
+  letter-spacing: 0.19em;
   text-transform: uppercase;
 }
 
-/* ---------- Buttons ---------- */
+/* =========================================================
+   BUTTONS
+========================================================= */
 
 .btn {
+  position: relative;
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
+
   gap: 8px;
+
   min-height: 43px;
-  padding: 0 16px;
-  border: 1px solid #111311;
+
+  padding: 0 17px;
+
+  border: 1px solid #101110;
   border-radius: 12px;
-  background: #111311;
+
+  background: #101110;
   color: #fff;
+
   font-size: 13px;
   font-weight: 850;
+
+  letter-spacing: -0.01em;
+
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 5px 15px rgba(16, 17, 16, 0.08);
+
   transition:
     transform 0.18s ease,
     box-shadow 0.18s ease,
-    background 0.18s ease;
+    background 0.18s ease,
+    border-color 0.18s ease;
 }
 
 .btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 9px 22px rgba(17, 19, 17, 0.12);
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 10px 26px rgba(16, 17, 16, 0.15);
+}
+
+.btn:active {
+  transform: translateY(0);
 }
 
 .btn.light {
-  background: #fff;
-  color: #111311;
+  background: rgba(255, 255, 255, 0.9);
+  color: #101110;
   border-color: var(--line);
+
+  box-shadow: var(--shadow-sm);
 }
 
 .btn.light:hover {
-  background: #f8f9f7;
+  background: #fff;
+  border-color: #d9ddd8;
 }
 
 .btn.danger {
-  background: #fff4f3;
+  background: #fff5f4;
   border-color: #f0d0cc;
   color: #ad3932;
+
+  box-shadow: none;
+}
+
+.btn.danger:hover {
+  background: #fff0ee;
+  border-color: #e9bdb7;
 }
 
 .btn.small {
   min-height: 36px;
+
   padding: 0 12px;
+
   font-size: 12px;
+
   border-radius: 10px;
 }
 
-/* ---------- Cards ---------- */
+/* =========================================================
+   CARDS
+========================================================= */
 
 .card {
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid var(--line);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.98),
+      rgba(255, 255, 255, 0.94)
+    );
+
+  border: 1px solid rgba(229, 231, 227, 0.95);
+
   border-radius: var(--radius);
+
   padding: 22px;
+
   box-shadow: var(--shadow);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .card h1,
 .card h2,
 .card h3 {
-  letter-spacing: -0.04em;
+  letter-spacing: -0.045em;
 }
 
 .card h2 {
   margin: 0 0 18px;
+
   font-size: 19px;
 }
 
@@ -205,7 +313,9 @@ button:disabled {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-/* ---------- Text ---------- */
+/* =========================================================
+   TEXT
+========================================================= */
 
 .muted {
   color: var(--muted);
@@ -217,11 +327,16 @@ button:disabled {
 
 .section-title {
   margin: 0 0 16px;
+
   font-size: 24px;
-  letter-spacing: -0.045em;
+
+  letter-spacing: -0.05em;
+  line-height: 1.1;
 }
 
-/* ---------- Forms ---------- */
+/* =========================================================
+   FORMS
+========================================================= */
 
 .field {
   margin-bottom: 16px;
@@ -229,156 +344,302 @@ button:disabled {
 
 .label {
   display: block;
+
   margin-bottom: 8px;
+
   font-size: 12px;
   font-weight: 850;
+
   color: #343934;
 }
 
 .input {
   width: 100%;
   height: 47px;
+
   padding: 0 14px;
+
   border: 1px solid var(--line-dark);
   border-radius: 12px;
+
   outline: none;
-  background: #fff;
+
+  background: rgba(255, 255, 255, 0.95);
   color: var(--text);
+
+  box-shadow:
+    0 1px 2px rgba(16, 17, 16, 0.02);
+
   transition:
     border-color 0.18s ease,
-    box-shadow 0.18s ease;
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.input:hover {
+  border-color: #c8cdc7;
 }
 
 .input:focus {
-  border-color: #999f99;
-  box-shadow: 0 0 0 4px rgba(17, 19, 17, 0.055);
+  border-color: #969d96;
+
+  background: #fff;
+
+  box-shadow:
+    0 0 0 4px rgba(16, 17, 16, 0.055),
+    0 4px 15px rgba(16, 17, 16, 0.035);
+}
+
+.input::placeholder {
+  color: #a1a6a1;
+}
+
+textarea.input {
+  min-height: 110px;
+  padding: 13px 14px;
+  resize: vertical;
+}
+
+select.input {
+  cursor: pointer;
 }
 
 input[type="file"].input {
   height: auto;
   padding: 11px 12px;
+
+  cursor: pointer;
 }
 
-/* ---------- Stats ---------- */
+/* =========================================================
+   STATS
+========================================================= */
 
 .stat {
   position: relative;
+
   overflow: hidden;
+
   min-height: 132px;
+}
+
+.stat::before {
+  content: "";
+
+  position: absolute;
+
+  width: 150px;
+  height: 150px;
+
+  right: -75px;
+  top: -75px;
+
+  border-radius: 50%;
+
+  background: rgba(244, 246, 242, 0.9);
 }
 
 .stat::after {
   content: "";
+
   position: absolute;
+
   width: 100px;
   height: 100px;
+
   right: -45px;
   bottom: -50px;
+
   border-radius: 50%;
-  background: #f1f3ef;
+
+  background: #f0f2ee;
 }
 
 .stat strong {
   position: relative;
+
   z-index: 1;
+
   display: block;
+
   margin-top: 11px;
+
   font-size: 31px;
-  letter-spacing: -0.06em;
+
+  letter-spacing: -0.065em;
 }
 
-/* ---------- Pills ---------- */
+/* =========================================================
+   PILLS
+========================================================= */
 
 .pill {
   display: inline-flex;
+
   align-items: center;
+  justify-content: center;
+
   min-height: 27px;
+
   padding: 0 10px;
+
   border: 1px solid var(--line);
+
   border-radius: 999px;
+
   background: #f6f7f5;
+
+  color: #3e443f;
+
   font-size: 11px;
   font-weight: 900;
+
   letter-spacing: 0.02em;
+
+  white-space: nowrap;
 }
 
-/* ---------- Rows / Lists ---------- */
+/* =========================================================
+   ROWS / LISTS
+========================================================= */
 
 .row {
   display: flex;
+
   align-items: center;
   justify-content: space-between;
+
   gap: 12px;
 }
 
 .list {
   display: flex;
   flex-direction: column;
+
   gap: 10px;
 }
 
 .item {
   border: 1px solid var(--line);
+
   border-radius: 15px;
+
   padding: 15px;
-  background: #fff;
+
+  background: rgba(255, 255, 255, 0.95);
+
+  box-shadow:
+    0 2px 8px rgba(16, 17, 16, 0.025);
+
   transition:
     border-color 0.18s ease,
-    transform 0.18s ease;
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .item:hover {
-  border-color: #d5d9d4;
-  transform: translateY(-1px);
+  border-color: #d3d8d2;
+
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 10px 25px rgba(16, 17, 16, 0.055);
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
+
   gap: 7px;
 }
 
-/* ---------- Food ---------- */
+/* =========================================================
+   FOOD
+========================================================= */
 
 .foodimg {
   width: 100%;
   height: 190px;
+
   display: block;
+
   object-fit: cover;
+
   border-radius: 15px;
+
   background:
-    linear-gradient(135deg, #eef0ed, #f8f9f7);
+    linear-gradient(
+      135deg,
+      #eef0ed,
+      #f8f9f7
+    );
+
+  transition:
+    transform 0.35s ease,
+    filter 0.35s ease;
 }
 
 .food-card {
   overflow: hidden;
+
   padding: 0;
+
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.food-card:hover {
+  transform: translateY(-3px);
+
+  box-shadow:
+    0 24px 60px rgba(16, 17, 16, 0.1);
+}
+
+.food-card:hover .foodimg {
+  transform: scale(1.025);
 }
 
 .food-card-body {
   padding: 17px;
 }
 
-/* ---------- QR ---------- */
+/* =========================================================
+   QR
+========================================================= */
 
 .tableqr {
   width: 190px;
   height: 190px;
+
   display: block;
+
   margin: 17px auto;
+
   padding: 8px;
+
   object-fit: contain;
+
   border: 1px solid var(--line);
+
   border-radius: 16px;
+
   background: #fff;
+
+  box-shadow:
+    0 10px 30px rgba(16, 17, 16, 0.055);
 }
 
-/* ---------- Landing ---------- */
+/* =========================================================
+   LANDING PAGE
+========================================================= */
 
 .landing-hero {
   min-height: 610px;
+
   display: flex;
   align-items: center;
+
   padding: 50px 0 80px;
 }
 
@@ -388,23 +649,34 @@ input[type="file"].input {
 
 .landing-copy h1 {
   margin: 14px 0 22px;
+
   font-size: clamp(52px, 9vw, 102px);
-  line-height: 0.91;
-  letter-spacing: -0.075em;
+
+  line-height: 0.9;
+
+  letter-spacing: -0.08em;
+
   font-weight: 950;
 }
 
 .landing-copy p {
   max-width: 650px;
+
   margin: 0;
+
+  color: #626862;
+
   font-size: 18px;
+
   line-height: 1.7;
 }
 
 .landing-actions {
   display: flex;
   flex-wrap: wrap;
+
   gap: 10px;
+
   margin-top: 30px;
 }
 
@@ -414,52 +686,117 @@ input[type="file"].input {
 
 .feature-number {
   display: block;
+
   margin-bottom: 30px;
+
   color: #9ca39d;
+
   font-size: 11px;
+
   font-weight: 900;
+
+  letter-spacing: 0.08em;
 }
 
 .feature-card h3 {
   margin: 0 0 9px;
+
   font-size: 17px;
+
+  letter-spacing: -0.035em;
 }
 
 .feature-card p {
   margin: 0;
+
+  color: var(--muted);
+
   line-height: 1.65;
+
   font-size: 13px;
 }
 
-/* ---------- Auth ---------- */
+/* =========================================================
+   AUTH
+========================================================= */
 
 .auth-page {
   min-height: 100vh;
+
   display: grid;
+
   grid-template-columns: 1fr 480px;
+
+  background: var(--bg);
 }
 
 .auth-side {
+  position: relative;
+
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+
   min-height: 100vh;
+
   padding: 30px 5vw;
-  background: #111311;
+
+  background:
+    radial-gradient(
+      circle at 80% 15%,
+      rgba(255, 255, 255, 0.07),
+      transparent 28%
+    ),
+    #101110;
+
   color: #fff;
+
+  overflow: hidden;
+}
+
+.auth-side::after {
+  content: "";
+
+  position: absolute;
+
+  width: 420px;
+  height: 420px;
+
+  right: -180px;
+  bottom: -200px;
+
+  border: 1px solid rgba(255, 255, 255, 0.06);
+
+  border-radius: 50%;
+
+  box-shadow:
+    0 0 0 60px rgba(255, 255, 255, 0.018),
+    0 0 0 120px rgba(255, 255, 255, 0.012);
 }
 
 .auth-side h1 {
+  position: relative;
+  z-index: 1;
+
   max-width: 580px;
+
   margin: 0;
+
   font-size: clamp(42px, 6vw, 76px);
-  line-height: 0.96;
-  letter-spacing: -0.065em;
+
+  line-height: 0.95;
+
+  letter-spacing: -0.07em;
 }
 
 .auth-side p {
+  position: relative;
+  z-index: 1;
+
   max-width: 480px;
+
   color: #aeb5ae;
+
   line-height: 1.7;
 }
 
@@ -469,27 +806,42 @@ input[type="file"].input {
 
 .auth-form-side {
   display: flex;
+
   align-items: center;
   justify-content: center;
+
   padding: 35px;
-  background: #f5f6f3;
+
+  background:
+    radial-gradient(
+      circle at 50% 30%,
+      #fff 0,
+      rgba(255, 255, 255, 0) 48%
+    ),
+    #f5f6f3;
 }
 
 .auth-card {
   width: min(100%, 390px);
+
   box-shadow: none;
 }
 
 .auth-card h1 {
   margin: 0 0 8px;
+
   font-size: 30px;
+
+  letter-spacing: -0.055em;
 }
 
 .auth-card > p {
   line-height: 1.55;
 }
 
-/* ---------- Dashboard ---------- */
+/* =========================================================
+   DASHBOARD
+========================================================= */
 
 .dashboard-hero {
   padding: 35px 0 26px;
@@ -497,8 +849,12 @@ input[type="file"].input {
 
 .dashboard-hero h1 {
   margin: 7px 0;
+
   font-size: clamp(32px, 5vw, 52px);
-  letter-spacing: -0.06em;
+
+  letter-spacing: -0.065em;
+
+  line-height: 1;
 }
 
 .dashboard-section {
@@ -507,17 +863,22 @@ input[type="file"].input {
 
 .workspace-bar {
   padding: 12px 0;
+
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
 
 .workspace-meta {
   display: flex;
+
   align-items: center;
+
   gap: 10px;
 }
 
-/* ---------- Customer ---------- */
+/* =========================================================
+   CUSTOMER
+========================================================= */
 
 .customer-page {
   width: min(1080px, calc(100% - 28px));
@@ -525,11 +886,22 @@ input[type="file"].input {
 
 .customer-header {
   position: sticky;
+
   top: 0;
+
   z-index: 10;
+
   padding: 15px 0;
-  background: rgba(245, 246, 243, 0.88);
-  backdrop-filter: blur(18px);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(245, 246, 243, 0.96),
+      rgba(245, 246, 243, 0.82)
+    );
+
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 .customer-hero {
@@ -538,8 +910,12 @@ input[type="file"].input {
 
 .customer-hero h1 {
   margin: 7px 0 10px;
+
   font-size: clamp(36px, 7vw, 66px);
-  letter-spacing: -0.07em;
+
+  letter-spacing: -0.075em;
+
+  line-height: 0.95;
 }
 
 .customer-menu {
@@ -548,31 +924,97 @@ input[type="file"].input {
 
 .cart-bar {
   position: sticky;
+
   z-index: 20;
+
   bottom: 14px;
+
   width: min(700px, 100%);
+
   margin: 25px auto;
+
   padding: 13px;
+
   border: 1px solid #dfe3de;
+
   border-radius: 17px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 20px 60px rgba(17, 19, 17, 0.14);
+
+  background:
+    rgba(255, 255, 255, 0.94);
+
+  box-shadow:
+    0 20px 60px rgba(17, 19, 17, 0.14);
+
   backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
-/* ---------- Footer ---------- */
+/* =========================================================
+   FOOTER
+========================================================= */
 
 .footer {
   padding: 60px 0;
+
   color: var(--muted);
+
   font-size: 12px;
 }
 
-/* ---------- Responsive ---------- */
+.footer a {
+  transition:
+    color 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.footer a:hover {
+  color: var(--text);
+}
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cfd3ce;
+  border: 2px solid var(--bg);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #b9beb8;
+}
+
+/* =========================================================
+   FOCUS ACCESSIBILITY
+========================================================= */
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #101110;
+  outline-offset: 3px;
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
 
 @media (max-width: 900px) {
   .grid4 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
   }
 
   .auth-page {
@@ -603,7 +1045,9 @@ input[type="file"].input {
 
   .nav .btn {
     min-height: 39px;
+
     padding: 0 11px;
+
     font-size: 12px;
   }
 
@@ -613,11 +1057,16 @@ input[type="file"].input {
 
   .landing-hero {
     min-height: auto;
+
     padding: 70px 0 65px;
   }
 
   .landing-copy h1 {
-    font-size: clamp(48px, 15vw, 75px);
+    font-size: clamp(
+      48px,
+      15vw,
+      75px
+    );
   }
 
   .landing-copy p {
@@ -632,6 +1081,7 @@ input[type="file"].input {
 
   .card {
     border-radius: 17px;
+
     padding: 17px;
   }
 
@@ -650,6 +1100,15 @@ input[type="file"].input {
   .tableqr {
     width: 170px;
     height: 170px;
+  }
+
+  .cart-bar {
+    bottom: 8px;
+
+    margin-left: auto;
+    margin-right: auto;
+
+    border-radius: 15px;
   }
 }
 
@@ -672,5 +1131,30 @@ input[type="file"].input {
 
   .cart-bar .row {
     align-items: center;
+  }
+
+  .hero h1 {
+    font-size: 43px;
+  }
+
+  .customer-hero {
+    padding-top: 32px;
+  }
+}
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
   }
 }
