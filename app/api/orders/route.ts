@@ -1,4 +1,20 @@
-import { supabaseServer } from '@/lib/supabase-server';
+import { createClient } from "@supabase/supabase-js";
+
+function getAdminSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!url || !serviceRoleKey) {
+  throw new Error("SERVICE_ROLE_KEY_MISSING");
+}
+
+  return createClient(url, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}
 
 export async function POST(req: Request) {
   try {
@@ -11,112 +27,167 @@ export async function POST(req: Request) {
       !body.items.length
     ) {
       return Response.json(
-        { error: 'Invalid order' },
+        { error: "Invalid order" },
         { status: 400 }
       );
     }
 
-    const s = await supabaseServer();
+    const supabase = getAdminSupabase();
 
-    const { data: r } = await s
-      .from('restaurants')
-      .select('id,is_active')
-      .eq('id', body.restaurant_id)
-      .single();
+    // Check restaurant
+    const { data: restaurant, error: restaurantError } =
+      await supabase
+        .from("restaurants")
+        .select("id,is_active")
+        .eq("id", body.restaurant_id)
+        .single();
 
-    if (!r?.is_active) {
+    if (restaurantError || !restaurant) {
       return Response.json(
-        { error: 'Restaurant unavailable' },
+        { error: "Restaurant not found" },
+        { status: 404 }
+      );
+    }
+
+    if (!restaurant.is_active) {
+      return Response.json(
+        { error: "Restaurant unavailable" },
         { status: 403 }
       );
     }
 
-    const ids = body.items.map(
-      (x: any) => x.menu_item_id
-    );
+    // Check that the table actually belongs to this restaurant
+    const { data: table, error: tableError } = await supabase
+      .from("tables")
+      .select("id,restaurant_id,is_active")
+      .eq("id", body.table_id)
+      .eq("restaurant_id", restaurant.id)
+      .single();
 
-    const { data: menus } = await s
-      .from('menu_items')
-      .select('id,name,price')
-      .eq('restaurant_id', r.id)
-      .in('id', ids)
-      .eq('is_available', true);
-
-    if (!menus || menus.length !== ids.length) {
+    if (tableError || !table) {
       return Response.json(
-        { error: 'Menu changed. Refresh and try again.' },
+        { error: "Invalid table" },
         { status: 400 }
       );
     }
 
+    if (!table.is_active) {
+      return Response.json(
+        { error: "Table is unavailable" },
+        { status: 400 }
+      );
+    }
+
+    // Get menu items
+    const ids = body.items.map(
+      (x: any) => x.menu_item_id
+    );
+
+    const { data: menus, error: menuError } = await supabase
+      .from("menu_items")
+      .select("id,name,price")
+      .eq("restaurant_id", restaurant.id)
+      .in("id", ids)
+      .eq("is_available", true);
+
+    if (menuError) {
+      throw menuError;
+    }
+
+    if (!menus || menus.length !== ids.length) {
+      return Response.json(
+        {
+          error:
+            "Menu changed. Refresh and try again.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Normalize order items
     const normalized = body.items.map((x: any) => {
-      const m = menus.find(
+      const menu = menus.find(
         (z: any) => z.id === x.menu_item_id
       );
 
-      if (!m) {
-        throw new Error('Menu item not found');
+      if (!menu) {
+        throw new Error("Menu item not found");
       }
 
-      const q = Math.min(
+      const quantity = Math.min(
         99,
         Math.max(1, Number(x.quantity) || 1)
       );
 
       return {
-        menu_item_id: m.id,
-        name: m.name,
-        price: m.price,
-        quantity: q,
+        menu_item_id: menu.id,
+        name: menu.name,
+        price: menu.price,
+        quantity,
       };
     });
 
+    // Calculate total on the server
     const total = normalized.reduce(
-      (a: number, x: any) =>
-        a + Number(x.price) * x.quantity,
+      (sum: number, item: any) =>
+        sum + Number(item.price) * item.quantity,
       0
     );
 
-    const { data: o, error } = await s
-      .from('orders')
-      .insert({
-        restaurant_id: r.id,
-        table_id: body.table_id,
-        total,
-        status: 'NEW',
-      })
-      .select('id')
-      .single();
+    // Create order
+    const { data: order, error: orderError } =
+      await supabase
+        .from("orders")
+        .insert({
+          restaurant_id: restaurant.id,
+          table_id: table.id,
+          total,
+          status: "NEW",
+        })
+        .select("id")
+        .single();
 
-    if (error) {
-      throw error;
+    if (orderError) {
+      throw orderError;
     }
 
-    const { error: ie } = await s
-      .from('order_items')
-      .insert(
-        normalized.map((x: any) => ({
-          ...x,
-          order_id: o.id,
-          restaurant_id: r.id,
-        }))
-      );
+    // Create order items
+    const { error: orderItemsError } =
+      await supabase
+        .from("order_items")
+        .insert(
+          normalized.map((item: any) => ({
+            ...item,
+            order_id: order.id,
+            restaurant_id: restaurant.id,
+          }))
+        );
 
-    if (ie) {
-      throw ie;
+    if (orderItemsError) {
+      // Remove the order if order_items insertion fails
+      await supabase
+        .from("orders")
+        .delete()
+        .eq("id", order.id);
+
+      throw orderItemsError;
     }
 
     return Response.json(
       {
-        id: o.id,
+        id: order.id,
         total,
       },
       { status: 201 }
     );
-  } catch (e: any) {
+  } catch (error: any) {
+    console.error("Order creation error:", error);
+
     return Response.json(
       {
-        error: e.message || 'Order failed',
+        error:
+          error?.message ||
+          "Order failed",
       },
       { status: 500 }
     );
