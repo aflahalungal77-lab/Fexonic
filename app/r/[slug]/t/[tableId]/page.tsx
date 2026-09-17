@@ -29,28 +29,94 @@ type MenuItem = {
   category_id?: string | null;
 };
 
+type RequestType =
+  | "TISSUE"
+  | "CUTLERY"
+  | "WATER"
+  | "EXTRA_FOOD"
+  | "CALL_WAITER"
+  | "OTHER";
+
+const requestOptions: {
+  type: RequestType;
+  icon: string;
+  label: string;
+}[] = [
+  {
+    type: "TISSUE",
+    icon: "🧻",
+    label: "Tissue",
+  },
+  {
+    type: "CUTLERY",
+    icon: "🍴",
+    label: "Cutlery",
+  },
+  {
+    type: "WATER",
+    icon: "💧",
+    label: "Water",
+  },
+  {
+    type: "EXTRA_FOOD",
+    icon: "🍛",
+    label: "Extra food",
+  },
+  {
+    type: "CALL_WAITER",
+    icon: "🧑‍🍳",
+    label: "Call waiter",
+  },
+  {
+    type: "OTHER",
+    icon: "💬",
+    label: "Other",
+  },
+];
+
 export default function Customer({
   params,
 }: {
   params: Promise<CustomerParams>;
 }) {
-  const [p, setP] = useState<CustomerParams | null>(null);
+  const [p, setP] =
+    useState<CustomerParams | null>(null);
 
   const [restaurant, setRestaurant] =
     useState<Restaurant | null>(null);
 
-  const [items, setItems] = useState<MenuItem[]>([]);
+  const [items, setItems] =
+    useState<MenuItem[]>([]);
 
   const [cart, setCart] =
     useState<Record<string, number>>({});
 
   const [msg, setMsg] = useState("");
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [ordering, setOrdering] = useState(false);
+  const [ordering, setOrdering] =
+    useState(false);
 
-  // Get QR parameters once
+  const [orderSuccess, setOrderSuccess] =
+    useState<{ id: string; total: number } | null>(null);
+
+  const [supportOpen, setSupportOpen] =
+    useState(false);
+
+  const [selectedRequest, setSelectedRequest] =
+    useState<RequestType | null>(null);
+
+  const [customMessage, setCustomMessage] =
+    useState("");
+
+  const [sendingRequest, setSendingRequest] =
+    useState(false);
+
+  const [requestSent, setRequestSent] =
+    useState(false);
+
   useEffect(() => {
     let mounted = true;
 
@@ -65,7 +131,6 @@ export default function Customer({
     };
   }, [params]);
 
-  // Load menu once after parameters are ready
   useEffect(() => {
     if (!p) return;
 
@@ -90,13 +155,15 @@ export default function Customer({
           }
         );
 
-        const data = await response.json();
+        const data =
+          await response.json();
 
         if (cancelled) return;
 
         if (!response.ok || data.error) {
           setMsg(
-            data.error || "Failed to load menu"
+            data.error ||
+              "Failed to load menu"
           );
           return;
         }
@@ -106,7 +173,9 @@ export default function Customer({
       } catch (error) {
         if (!cancelled) {
           console.error(error);
-          setMsg("Failed to load menu");
+          setMsg(
+            "Failed to load menu"
+          );
         }
       } finally {
         if (!cancelled) {
@@ -159,21 +228,88 @@ export default function Customer({
 
   function cartCount() {
     return Object.values(cart).reduce(
-      (sum, quantity) => sum + quantity,
+      (sum, quantity) =>
+        sum + quantity,
       0
     );
   }
 
+  function playSuccessSound() {
+    try {
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as typeof window & {
+          webkitAudioContext?: typeof AudioContext;
+        }).webkitAudioContext;
+
+      if (!AudioContextClass) return;
+
+      const audioContext = new AudioContextClass();
+      const now = audioContext.currentTime;
+
+      const notes = [
+        { frequency: 660, start: 0, duration: 0.11 },
+        { frequency: 880, start: 0.09, duration: 0.16 },
+      ];
+
+      notes.forEach((note) => {
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(
+          note.frequency,
+          now + note.start
+        );
+
+        gain.gain.setValueAtTime(
+          0.0001,
+          now + note.start
+        );
+        gain.gain.exponentialRampToValueAtTime(
+          0.08,
+          now + note.start + 0.02
+        );
+        gain.gain.exponentialRampToValueAtTime(
+          0.0001,
+          now + note.start + note.duration
+        );
+
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+
+        oscillator.start(now + note.start);
+        oscillator.stop(
+          now + note.start + note.duration + 0.02
+        );
+      });
+
+      window.setTimeout(() => {
+        audioContext.close().catch(() => {});
+      }, 700);
+    } catch {
+      // Some browsers block audio until a user gesture.
+    }
+  }
+
   async function order() {
-    if (!restaurant || !p || ordering) {
+    if (
+      !restaurant ||
+      !p ||
+      ordering
+    ) {
       return;
     }
 
-    const currentRestaurant = restaurant;
+    const currentRestaurant =
+      restaurant;
+
     const currentParams = p;
 
     const rows = items
-      .filter((item) => cart[item.id])
+      .filter(
+        (item) => cart[item.id]
+      )
       .map((item) => ({
         menu_item_id: item.id,
         quantity: cart[item.id],
@@ -195,7 +331,8 @@ export default function Customer({
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":
+              "application/json",
           },
           body: JSON.stringify({
             restaurant_id:
@@ -207,7 +344,8 @@ export default function Customer({
         }
       );
 
-      const text = await response.text();
+      const text =
+        await response.text();
 
       let data: any = {};
 
@@ -223,17 +361,18 @@ export default function Customer({
 
       if (!response.ok) {
         throw new Error(
-          data?.error || "Order failed"
+          data?.error ||
+            "Order failed"
         );
       }
 
       setCart({});
-
-      setMsg(
-        `Order placed • #${String(
-          data.id
-        ).slice(0, 8)}`
-      );
+      setMsg("");
+      setOrderSuccess({
+        id: String(data.id),
+        total: Number(data.total ?? total()),
+      });
+      playSuccessSound();
     } catch (error: any) {
       console.error(
         "Order error:",
@@ -249,286 +388,434 @@ export default function Customer({
     }
   }
 
-  // Loading
+  function openSupport() {
+    setSupportOpen(true);
+    setSelectedRequest(null);
+    setCustomMessage("");
+    setRequestSent(false);
+  }
+
+  function closeSupport() {
+    if (sendingRequest) return;
+
+    setSupportOpen(false);
+    setSelectedRequest(null);
+    setCustomMessage("");
+  }
+
+  async function sendSupportRequest() {
+    if (
+      !restaurant ||
+      !p ||
+      !selectedRequest ||
+      sendingRequest
+    ) {
+      return;
+    }
+
+    if (
+      selectedRequest === "OTHER" &&
+      !customMessage.trim()
+    ) {
+      return;
+    }
+
+    try {
+      setSendingRequest(true);
+
+      const response = await fetch(
+        "/api/requests",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            restaurant_id:
+              restaurant.id,
+            table_id: p.tableId,
+            type: selectedRequest,
+            message:
+              customMessage.trim() ||
+              null,
+          }),
+        }
+      );
+
+      const text =
+        await response.text();
+
+      let data: any = {};
+
+      try {
+        data = text
+          ? JSON.parse(text)
+          : {};
+      } catch {
+        throw new Error(
+          "Server returned an invalid response."
+        );
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error ||
+            "Failed to send request"
+        );
+      }
+
+      setRequestSent(true);
+
+      setTimeout(() => {
+        setSupportOpen(false);
+        setSelectedRequest(null);
+        setCustomMessage("");
+        setRequestSent(false);
+      }, 1400);
+    } catch (error: any) {
+      console.error(
+        "Support request error:",
+        error
+      );
+
+      setMsg(
+        error?.message ||
+          "Failed to send request"
+      );
+    } finally {
+      setSendingRequest(false);
+    }
+  }
+
   if (loading) {
     return (
-      <main className="container">
-        <header className="top">
-          <b className="brand">
-            FEXONIC
-          </b>
-
-          <span className="pill">
-            TABLE
-          </span>
-        </header>
-
-        <section className="hero">
-          <div className="eyebrow">
-            TABLE ORDERING
-          </div>
-
-          <div
-            className="card"
-            style={{
-              marginTop: 20,
-              textAlign: "center",
-              padding: 40,
-            }}
-          >
-            <div
-              style={{
-                fontSize: 15,
-                fontWeight: 600,
-              }}
-            >
-              Loading menu...
+      <main className="customer-shell">
+        <div className="customer-loading">
+          <div className="customer-loading-mark">F</div>
+          <div className="loading-line loading-line-lg" />
+          <div className="loading-line" />
+          <div className="loading-card">
+            <div className="loading-image" />
+            <div className="loading-copy">
+              <div className="loading-line loading-line-sm" />
+              <div className="loading-line" />
             </div>
-
-            <p className="muted">
-              Please wait a moment.
-            </p>
           </div>
-        </section>
+          <p>Preparing your menu…</p>
+        </div>
       </main>
     );
   }
 
-  // Error / unavailable
   if (msg && !restaurant) {
     return (
-      <main className="container">
-        <div
-          className="card"
-          style={{
-            marginTop: 70,
-            textAlign: "center",
-          }}
-        >
-          <h1>
-            Unavailable
-          </h1>
-
-          <p className="muted">
-            {msg}
-          </p>
+      <main className="customer-shell">
+        <div className="customer-unavailable">
+          <div className="status-icon">!</div>
+          <div className="eyebrow">FEXONIC</div>
+          <h1>Menu unavailable</h1>
+          <p>{msg}</p>
         </div>
       </main>
     );
   }
 
-  return (
-    <main className="container">
-      <header className="top">
-        <b className="brand">
-          {restaurant?.name ||
-            "FEXONIC"}
-        </b>
+  const itemCount = cartCount();
+  const cartTotal = total();
 
-        <span className="pill">
-          TABLE
-        </span>
+  return (
+    <main className="customer-shell">
+      <header className="customer-header">
+        <div className="customer-header-inner">
+          <div className="customer-brand">
+            <span className="brand-dot" />
+            <span>{restaurant?.name || "FEXONIC"}</span>
+          </div>
+
+          <div className="table-badge">
+            <span className="table-badge-dot" />
+            Table
+            <strong>{p?.tableId?.slice(0, 6) || "—"}</strong>
+          </div>
+        </div>
       </header>
 
-      <section className="hero">
-        <div className="eyebrow">
-          TABLE ORDERING
+      <section className="customer-hero">
+        <div className="customer-hero-inner">
+          <div className="eyebrow">DIGITAL MENU</div>
+          <h1>{restaurant?.name}</h1>
+          <p>
+            {restaurant?.description ||
+              "Choose your favourites and order directly from your table."}
+          </p>
+
+          <div className="hero-meta">
+            <span>
+              <span className="meta-dot" />
+              Open for orders
+            </span>
+            <span>•</span>
+            <span>Table service</span>
+          </div>
         </div>
-
-        <h1>
-          {restaurant?.name}
-        </h1>
-
-        <p className="muted">
-          {restaurant?.description ||
-            "Scan. Choose. Order."}
-        </p>
       </section>
 
-      {items.length === 0 ? (
-        <div
-          className="card"
-          style={{
-            textAlign: "center",
-            padding: 40,
-          }}
-        >
-          <h3>
-            Menu unavailable
-          </h3>
-
-          <p className="muted">
-            This restaurant has no
-            available items right now.
-          </p>
+      <section className="customer-content">
+        <div className="menu-toolbar">
+          <div>
+            <div className="eyebrow">MENU</div>
+            <h2>What would you like?</h2>
+          </div>
+          <span className="menu-count">
+            {items.length} {items.length === 1 ? "item" : "items"}
+          </span>
         </div>
-      ) : (
-        <div className="grid grid3">
-          {items.map(
-            (item, index) => {
-              const quantity =
-                cart[item.id] || 0;
+
+        {items.length === 0 ? (
+          <div className="empty-menu">
+            <div className="empty-menu-icon">—</div>
+            <h3>Menu unavailable</h3>
+            <p>No items are available right now.</p>
+          </div>
+        ) : (
+          <div className="customer-menu-grid">
+            {items.map((item, index) => {
+              const quantity = cart[item.id] || 0;
 
               return (
-                <article
-                  className="card food-card"
-                  key={item.id}
-                >
-                  {item.image?.url ? (
-                    <img
-                      className="foodimg"
-                      src={
-                        item.image.url
-                      }
-                      alt={
-                        item.image.alt ||
-                        item.name
-                      }
-                      loading={
-                        index < 2
-                          ? "eager"
-                          : "lazy"
-                      }
-                      decoding="async"
-                      fetchPriority={
-                        index === 0
-                          ? "high"
-                          : "auto"
-                      }
-                    />
-                  ) : (
-                    <div className="foodimg" />
-                  )}
+                <article className="customer-food-card" key={item.id}>
+                  <div className="food-image-wrap">
+                    {item.image?.url ? (
+                      <img
+                        className="foodimg"
+                        src={item.image.url}
+                        alt={item.image.alt || item.name}
+                        loading={index < 2 ? "eager" : "lazy"}
+                        decoding="async"
+                        fetchPriority={index === 0 ? "high" : "auto"}
+                      />
+                    ) : (
+                      <div className="food-placeholder">
+                        <span>FEXONIC</span>
+                      </div>
+                    )}
 
-                  <div
-                    className="row"
-                    style={{
-                      marginTop: 12,
-                    }}
-                  >
-                    <b>
-                      {item.name}
-                    </b>
-
-                    <b>
-                      ₹{item.price}
-                    </b>
+                    {quantity > 0 && (
+                      <div className="food-selected-badge">
+                        {quantity} in cart
+                      </div>
+                    )}
                   </div>
 
-                  {item.description && (
-                    <p className="muted">
-                      {item.description}
-                    </p>
-                  )}
-
-                  {quantity === 0 ? (
-                    <button
-                      className="btn"
-                      type="button"
-                      style={{
-                        width: "100%",
-                        marginTop: 8,
-                      }}
-                      onClick={() =>
-                        add(item.id)
-                      }
-                    >
-                      Add
-                    </button>
-                  ) : (
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems:
-                          "center",
-                        justifyContent:
-                          "space-between",
-                        gap: 10,
-                        marginTop: 8,
-                      }}
-                    >
-                      <button
-                        className="btn"
-                        type="button"
-                        onClick={() =>
-                          remove(item.id)
-                        }
-                      >
-                        −
-                      </button>
-
-                      <b>
-                        {quantity}
-                      </b>
-
-                      <button
-                        className="btn"
-                        type="button"
-                        onClick={() =>
-                          add(item.id)
-                        }
-                      >
-                        +
-                      </button>
+                  <div className="customer-food-body">
+                    <div className="food-title-row">
+                      <div>
+                        <h3>{item.name}</h3>
+                        {item.description && (
+                          <p>{item.description}</p>
+                        )}
+                      </div>
+                      <strong>₹{item.price}</strong>
                     </div>
-                  )}
+
+                    {quantity === 0 ? (
+                      <button
+                        className="food-add-btn"
+                        type="button"
+                        onClick={() => add(item.id)}
+                        aria-label={`Add ${item.name} to cart`}
+                      >
+                        <span>Add to cart</span>
+                        <span className="add-plus">+</span>
+                      </button>
+                    ) : (
+                      <div className="quantity-control">
+                        <button
+                          type="button"
+                          onClick={() => remove(item.id)}
+                          aria-label={`Remove one ${item.name}`}
+                        >
+                          −
+                        </button>
+                        <strong>{quantity}</strong>
+                        <button
+                          type="button"
+                          onClick={() => add(item.id)}
+                          aria-label={`Add one ${item.name}`}
+                        >
+                          +
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </article>
               );
-            }
-          )}
+            })}
+          </div>
+        )}
+
+        <button
+          type="button"
+          className="support-card"
+          onClick={openSupport}
+        >
+          <span className="support-icon">✦</span>
+          <span className="support-copy">
+            <strong>Need something?</strong>
+            <small>Ask the waiter for water, cutlery, tissue & more.</small>
+          </span>
+          <span className="support-arrow">→</span>
+        </button>
+      </section>
+
+      {itemCount > 0 && (
+        <div className="cart-dock">
+          <div className="cart-dock-inner">
+            <div className="cart-summary">
+              <span className="cart-item-count">{itemCount}</span>
+              <div>
+                <strong>Your order</strong>
+                <small>₹{cartTotal}</small>
+              </div>
+            </div>
+
+            <button
+              className="place-order-btn"
+              type="button"
+              onClick={order}
+              disabled={ordering}
+            >
+              <span>{ordering ? "Placing order…" : "Place order"}</span>
+              <span className="place-order-arrow">→</span>
+            </button>
+          </div>
         </div>
       )}
 
-      <section
-        className="card"
-        style={{
-          position: "sticky",
-          bottom: 12,
-          margin: "22px 0",
-          zIndex: 20,
-        }}
-      >
-        <div className="row">
-          <div>
-            <b>
-              Cart
-            </b>
+      {supportOpen && (
+        <div
+          className="modal-backdrop"
+          onClick={closeSupport}
+          role="presentation"
+        >
+          <div
+            className="support-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {requestSent ? (
+              <div className="success-state compact-success">
+                <div className="success-check">✓</div>
+                <div className="eyebrow">REQUEST SENT</div>
+                <h2>Waiter notified</h2>
+                <p>Your request has been sent to the kitchen.</p>
+              </div>
+            ) : (
+              <>
+                <div className="modal-head">
+                  <div>
+                    <div className="eyebrow">TABLE SUPPORT</div>
+                    <h2>Need something?</h2>
+                  </div>
+                  <button
+                    type="button"
+                    className="modal-close"
+                    onClick={closeSupport}
+                    aria-label="Close support"
+                  >
+                    ×
+                  </button>
+                </div>
 
-            <div className="muted">
-              {cartCount()} item
-              {cartCount() !== 1
-                ? "s"
-                : ""}{" "}
-              • ₹{total()}
-            </div>
+                <p className="modal-subtitle">
+                  Choose what you need. The waiter will be notified.
+                </p>
+
+                <div className="request-grid">
+                  {requestOptions.map((option) => {
+                    const active = selectedRequest === option.type;
+
+                    return (
+                      <button
+                        key={option.type}
+                        type="button"
+                        className={`request-option ${
+                          active ? "active" : ""
+                        }`}
+                        onClick={() => setSelectedRequest(option.type)}
+                      >
+                        <span className="request-option-icon">
+                          {option.icon}
+                        </span>
+                        <span>{option.label}</span>
+                        {active && <span className="request-check">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {selectedRequest === "OTHER" && (
+                  <textarea
+                    className="support-textarea"
+                    value={customMessage}
+                    onChange={(event) =>
+                      setCustomMessage(event.target.value)
+                    }
+                    placeholder="Tell the waiter what you need…"
+                    maxLength={500}
+                    rows={4}
+                  />
+                )}
+
+                <button
+                  type="button"
+                  className="send-request-btn"
+                  disabled={
+                    !selectedRequest ||
+                    sendingRequest ||
+                    (selectedRequest === "OTHER" &&
+                      !customMessage.trim())
+                  }
+                  onClick={sendSupportRequest}
+                >
+                  {sendingRequest ? "Sending…" : "Send request"}
+                </button>
+              </>
+            )}
           </div>
-
-          <button
-            className="btn"
-            type="button"
-            onClick={order}
-            disabled={
-              ordering ||
-              cartCount() === 0
-            }
-          >
-            {ordering
-              ? "Placing..."
-              : "Place order"}
-          </button>
         </div>
+      )}
 
-        {msg && (
-          <p
-            style={{
-              marginBottom: 0,
-              marginTop: 12,
-            }}
-          >
-            {msg}
-          </p>
-        )}
-      </section>
+      {orderSuccess && (
+        <div className="modal-backdrop order-success-backdrop">
+          <div className="order-success-modal" role="dialog" aria-modal="true">
+            <div className="success-orbit">
+              <div className="success-check">✓</div>
+            </div>
+
+            <div className="eyebrow">ORDER CONFIRMED</div>
+            <h2>Order placed!</h2>
+            <p>
+              Your order has been sent to the kitchen. Sit back and relax.
+            </p>
+
+            <div className="order-success-summary">
+              <span>
+                Order <strong>#{orderSuccess.id.slice(0, 8)}</strong>
+              </span>
+              <strong>₹{orderSuccess.total}</strong>
+            </div>
+
+            <button
+              type="button"
+              className="success-done-btn"
+              onClick={() => setOrderSuccess(null)}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
