@@ -1,23 +1,30 @@
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+
+const supabaseUrl = "https://zmoxqiggadqlbslyfrzi.supabase.co";
+const supabaseKey = "sb_publishable_OK-FDWBUcZ45tcccuFuukA_8R88aQyt";
 
 export async function supabaseServer() {
-  const jar = await cookies();
+  const cookieStore = await cookies();
 
   return createServerClient(
-    'https://zmoxqiggadqlbslyfrzi.supabase.co',
-    'sb_publishable_OK-FDWBUcZ45tcccuFuukA_8R88aQyt',
+    supabaseUrl,
+    supabaseKey,
     {
       cookies: {
         getAll() {
-          return jar.getAll();
+          return cookieStore.getAll();
         },
-        setAll(c) {
+
+        setAll(cookiesToSet) {
           try {
-            c.forEach(({ name, value, options }) => {
-              jar.set(name, value, options);
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
             });
-          } catch {}
+          } catch {
+            // Server Components cannot always modify cookies.
+            // Middleware handles session refresh.
+          }
         },
       },
     }

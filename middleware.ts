@@ -1,25 +1,30 @@
-import { createServerClient } from '@supabase/ssr';
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 export async function middleware(req: NextRequest) {
-  let res = NextResponse.next({
+  let response = NextResponse.next({
     request: req,
   });
 
-  const supabaseUrl = 'https://zmoxqiggadqlbslyfrzi.supabase.co';
-  const supabaseKey = 'sb_publishable_OK-FDWBUcZ45tcccuFuukA_8R88aQyt';
+  const supabaseUrl = "https://zmoxqiggadqlbslyfrzi.supabase.co";
+  const supabaseKey = "sb_publishable_OK-FDWBUcZ45tcccuFuukA_8R88aQyt";
 
-  const s = createServerClient(
+  const supabase = createServerClient(
     supabaseUrl,
     supabaseKey,
     {
       cookies: {
-        getAll: () => req.cookies.getAll(),
-        setAll(c) {
-          c.forEach(({ name, value, options }) =>
-            res.cookies.set(name, value, options)
-          );
+        getAll() {
+          return req.cookies.getAll();
+        },
+
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            req.cookies.set(name, value);
+
+            response.cookies.set(name, value, options);
+          });
         },
       },
     }
@@ -27,19 +32,26 @@ export async function middleware(req: NextRequest) {
 
   const {
     data: { user },
-  } = await s.auth.getUser();
+  } = await supabase.auth.getUser();
 
   if (
-    (req.nextUrl.pathname.startsWith('/k/') ||
-      req.nextUrl.pathname === '/kitchen') &&
+    (
+      req.nextUrl.pathname.startsWith("/k/") ||
+      req.nextUrl.pathname === "/kitchen"
+    ) &&
     !user
   ) {
-    return NextResponse.redirect(new URL('/login', req.url));
+    return NextResponse.redirect(
+      new URL("/login", req.url)
+    );
   }
 
-  return res;
+  return response;
 }
 
 export const config = {
-  matcher: ['/k/:path*', '/kitchen'],
+  matcher: [
+    "/k/:path*",
+    "/kitchen",
+  ],
 };
