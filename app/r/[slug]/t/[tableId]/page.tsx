@@ -143,18 +143,17 @@ export default function Customer({
         setLoading(true);
         setMsg("");
 
-        const response = await fetch(
-          `/api/menu?slug=${encodeURIComponent(
-            currentParams.slug
-          )}&table=${encodeURIComponent(
-            currentParams.tableId
-          )}`,
-          {
-            method: "GET",
-            cache: "force-cache",
-          }
-        );
-
+const response = await fetch(
+  `/api/menu?slug=${encodeURIComponent(
+    currentParams.slug
+  )}&table=${encodeURIComponent(
+    currentParams.tableId
+  )}`,
+  {
+    method: "GET",
+    cache: "no-store",
+  }
+);
         const data =
           await response.json();
 
