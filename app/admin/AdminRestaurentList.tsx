@@ -122,6 +122,13 @@ export default function AdminRestaurantList({
                       : "EXPIRED/OFF"}
                   </span>
 
+                  <a
+                    className="btn light"
+                    href={`/admin/restaurants/${restaurant.id}`}
+                  >
+                    View
+                  </a>
+
                   <button
                     type="button"
                     className="btn"

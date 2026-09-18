@@ -291,6 +291,16 @@ const response = await fetch(
     }
   }
 
+  function getDeviceKey() {
+    const keyName = "fexonic_device_key";
+    let key = window.localStorage.getItem(keyName);
+    if (!key) {
+      key = crypto.randomUUID();
+      window.localStorage.setItem(keyName, key);
+    }
+    return key;
+  }
+
   async function order() {
     if (
       !restaurant ||
@@ -339,6 +349,8 @@ const response = await fetch(
             table_id:
               currentParams.tableId,
             items: rows,
+            device_key: getDeviceKey(),
+            device_name: "Customer Device",
           }),
         }
       );
