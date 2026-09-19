@@ -1933,22 +1933,3 @@ select:focus-visible {
   }
 }
 
-/* =========================================================
-   FEXONIC BILLING / PRINT
-   ========================================================= */
-.bill-page{min-height:100vh;background:#f3f4f1;padding:28px 16px}
-.bill-toolbar{width:min(900px,100%);margin:0 auto 18px;display:flex;justify-content:space-between;gap:10px}
-.receipt{width:min(900px,100%);margin:0 auto;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow-sm);padding:42px}
-.receipt-head{text-align:center;border-bottom:1px solid var(--line);padding-bottom:25px}
-.receipt-head h1{margin:8px 0 4px;font-size:34px;letter-spacing:-.055em}
-.receipt-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:24px 0;border-bottom:1px solid var(--line)}
-.receipt-meta div{display:flex;flex-direction:column;gap:5px}
-.receipt-meta span{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#7a8079;font-weight:800}
-.receipt-lines{padding:8px 0}
-.receipt-line{display:flex;justify-content:space-between;gap:20px;padding:15px 0;border-bottom:1px solid #eceeea}
-.receipt-line div{display:flex;flex-direction:column;gap:4px}
-.receipt-line span{font-size:13px;color:#777d76}
-.receipt-total{display:flex;justify-content:space-between;align-items:center;padding:22px 0;font-size:20px;border-top:2px solid #111;margin-top:8px}
-.receipt-thanks{text-align:center;color:#777d76;margin:25px 0 0}
-@media(max-width:640px){.receipt{padding:24px 18px}.receipt-meta{grid-template-columns:1fr 1fr}.receipt-meta div:last-child{grid-column:1/-1}.receipt-head h1{font-size:28px}}
-@media print{body{background:#fff}.no-print{display:none!important}.bill-page{padding:0;background:#fff}.receipt{width:100%;max-width:none;border:0;box-shadow:none;padding:10mm}.receipt-a4{min-height:0}.receipt-line{break-inside:avoid}}
