@@ -7688,3 +7688,1178 @@ a {
   }
 
 }
+
+
+/* =========================================================
+   FEXONIC PUBLIC HOME PAGE
+   Color/layout styles for app/page.tsx
+   ========================================================= */
+
+.fexonic-home {
+  --black: #10110f;
+  --text: #11120f;
+  --muted: #70736e;
+  --line: #e5e6e1;
+  --soft: #f7f7f3;
+  --green: #1b8a5a;
+
+  min-height: 100vh;
+  background: #f7f7f3;
+  color: var(--text);
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+.fexonic-home * {
+  box-sizing: border-box;
+}
+
+.fexonic-home a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.fexonic-home .fx-home-nav {
+  height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 5%;
+  background: rgba(247, 247, 243, 0.94);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(16px);
+}
+
+.fexonic-home .fx-home-logo {
+  font-size: 27px;
+  font-weight: 900;
+  letter-spacing: -1.5px;
+}
+
+.fexonic-home .fx-home-logo span,
+.fexonic-home .fx-dashboard-logo span,
+.fexonic-home .fx-footer-brand span {
+  font-size: 8px;
+  vertical-align: top;
+  margin-left: 2px;
+}
+
+.fexonic-home .fx-home-links {
+  display: flex;
+  align-items: center;
+  gap: 38px;
+}
+
+.fexonic-home .fx-home-links a {
+  color: #222;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  position: relative;
+}
+
+.fexonic-home .fx-home-links a.active::after {
+  content: "";
+  position: absolute;
+  width: 38px;
+  height: 2px;
+  background: #111;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: -27px;
+}
+
+.fexonic-home .fx-home-actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.fexonic-home .fx-login {
+  color: #111;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.fexonic-home .fx-dark-btn,
+.fexonic-home .fx-primary-btn,
+.fexonic-home .fx-small-dark-btn {
+  background: #111;
+  color: white;
+  text-decoration: none;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 13px;
+  font-weight: 700;
+  transition: 0.2s ease;
+}
+
+.fexonic-home .fx-dark-btn {
+  padding: 13px 23px;
+  font-size: 13px;
+}
+
+.fexonic-home .fx-dark-btn:hover,
+.fexonic-home .fx-primary-btn:hover,
+.fexonic-home .fx-small-dark-btn:hover,
+.fexonic-home .fx-white-btn:hover {
+  transform: translateY(-2px);
+}
+
+.fexonic-home .fx-hero {
+  min-height: 650px;
+  padding: 70px 5% 55px;
+  display: grid;
+  grid-template-columns: 0.95fr 1.05fr;
+  gap: 30px;
+  align-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at 85% 40%,
+      rgba(216, 222, 207, 0.65),
+      transparent 33%
+    ),
+    #f7f7f3;
+}
+
+.fexonic-home .fx-hero-left {
+  position: relative;
+  z-index: 3;
+}
+
+.fexonic-home .fx-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: #eceee8;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 22px;
+}
+
+.fexonic-home .fx-dot {
+  width: 8px;
+  height: 8px;
+  background: #319a62;
+  border-radius: 50%;
+}
+
+.fexonic-home .fx-hero h1 {
+  font-size: clamp(48px, 5vw, 78px);
+  line-height: 0.98;
+  letter-spacing: -4px;
+  margin: 0;
+  max-width: 760px;
+  font-weight: 900;
+}
+
+.fexonic-home .fx-hero h1 span {
+  color: #555b54;
+}
+
+.fexonic-home .fx-hero-description {
+  color: #626660;
+  max-width: 600px;
+  font-size: 17px;
+  line-height: 1.65;
+  margin: 24px 0 28px;
+}
+
+.fexonic-home .fx-mini-features {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+  max-width: 650px;
+}
+
+.fexonic-home .fx-mini-feature {
+  display: flex;
+  gap: 9px;
+}
+
+.fexonic-home .fx-mini-icon {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 50%;
+  background: white;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+}
+
+.fexonic-home .fx-mini-feature strong {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+
+.fexonic-home .fx-mini-feature p {
+  margin: 0;
+  color: #81857e;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.fexonic-home .fx-hero-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.fexonic-home .fx-primary-btn {
+  padding: 15px 23px;
+  font-size: 13px;
+}
+
+.fexonic-home .fx-outline-btn {
+  border: 1px solid #d4d5d0;
+  background: transparent;
+  color: #171816;
+  text-decoration: none;
+  border-radius: 999px;
+  padding: 14px 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.fexonic-home .fx-play {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: white;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+}
+
+.fexonic-home .fx-stats {
+  display: flex;
+  gap: 50px;
+  margin-top: 38px;
+}
+
+.fexonic-home .fx-stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fexonic-home .fx-stats strong {
+  font-size: 21px;
+  letter-spacing: -0.7px;
+}
+
+.fexonic-home .fx-stats span {
+  font-size: 10px;
+  color: #777b75;
+}
+
+.fexonic-home .fx-hero-right {
+  min-height: 500px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fexonic-home .fx-food-circle {
+  width: 330px;
+  height: 330px;
+  border-radius: 50%;
+  background: #ebece4;
+  position: absolute;
+  right: 1%;
+  top: 2%;
+  display: grid;
+  place-items: center;
+}
+
+.fexonic-home .fx-food-plate {
+  width: 230px;
+  height: 230px;
+  border-radius: 50%;
+  background: #d8d9d0;
+  display: grid;
+  place-items: center;
+  font-size: 95px;
+  box-shadow:
+    0 30px 70px rgba(0, 0, 0, 0.1),
+    inset 0 0 0 15px rgba(255, 255, 255, 0.45);
+}
+
+.fexonic-home .fx-dashboard {
+  position: relative;
+  z-index: 4;
+  width: min(720px, 100%);
+  min-height: 390px;
+  border-radius: 20px;
+  background: #111;
+  color: white;
+  display: flex;
+  overflow: hidden;
+  box-shadow: 0 35px 80px rgba(0, 0, 0, 0.2);
+  margin-top: 70px;
+  margin-left: -30px;
+}
+
+.fexonic-home .fx-dashboard-sidebar {
+  width: 145px;
+  padding: 20px 12px;
+  background: #0c0d0c;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.fexonic-home .fx-dashboard-logo {
+  font-size: 16px;
+  font-weight: 900;
+  margin: 3px 8px 30px;
+}
+
+.fexonic-home .fx-side-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #777;
+  padding: 10px 9px;
+  font-size: 10px;
+  border-radius: 7px;
+  margin-bottom: 4px;
+}
+
+.fexonic-home .fx-side-item span {
+  font-size: 13px;
+}
+
+.fexonic-home .fx-side-item.selected {
+  background: #272827;
+  color: white;
+}
+
+.fexonic-home .fx-side-bottom {
+  margin-top: auto;
+  display: grid;
+  gap: 14px;
+  color: #777;
+  font-size: 9px;
+  padding: 0 9px;
+}
+
+.fexonic-home .fx-dashboard-main {
+  flex: 1;
+  padding: 23px;
+  background: #151615;
+  min-width: 0;
+}
+
+.fexonic-home .fx-dashboard-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.fexonic-home .fx-dashboard-top strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.fexonic-home .fx-dashboard-top span {
+  color: #777;
+  font-size: 9px;
+}
+
+.fexonic-home .fx-restaurant-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 9px;
+}
+
+.fexonic-home .fx-restaurant-status b {
+  background: #163a28;
+  color: #5bd994;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.fexonic-home .fx-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.fexonic-home .fx-dashboard-stat {
+  background: #f5f5f1;
+  color: #111;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.fexonic-home .fx-dashboard-stat span {
+  display: block;
+  color: #747872;
+  font-size: 8px;
+  margin-bottom: 5px;
+}
+
+.fexonic-home .fx-dashboard-stat strong {
+  display: block;
+  font-size: 17px;
+}
+
+.fexonic-home .fx-dashboard-stat small {
+  color: #2a9a61;
+  font-size: 7px;
+}
+
+.fexonic-home .fx-dashboard-content {
+  display: grid;
+  grid-template-columns: 1fr 105px;
+  gap: 9px;
+  margin-top: 9px;
+}
+
+.fexonic-home .fx-orders-card,
+.fexonic-home .fx-food-card {
+  background: #f5f5f1;
+  color: #111;
+  border-radius: 8px;
+  padding: 13px;
+}
+
+.fexonic-home .fx-card-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.fexonic-home .fx-card-heading strong {
+  font-size: 10px;
+}
+
+.fexonic-home .fx-card-heading span {
+  color: #777;
+  font-size: 7px;
+}
+
+.fexonic-home .fx-order-row {
+  display: grid;
+  grid-template-columns: 42px 27px 1fr 45px 35px;
+  align-items: center;
+  border-top: 1px solid #e4e5df;
+  padding: 8px 0;
+  font-size: 7px;
+  gap: 5px;
+}
+
+.fexonic-home .fx-order-row .status {
+  padding: 3px 4px;
+  text-align: center;
+  border-radius: 5px;
+  font-size: 6px;
+}
+
+.fexonic-home .fx-order-row .cooking {
+  color: #bd4035;
+  background: #f9dfdc;
+}
+
+.fexonic-home .fx-order-row .ready {
+  color: #18774e;
+  background: #dcefe5;
+}
+
+.fexonic-home .fx-order-row .served {
+  color: #4e685b;
+  background: #e6ebe7;
+}
+
+.fexonic-home .fx-food-card {
+  overflow: hidden;
+}
+
+.fexonic-home .fx-food-image {
+  height: 75px;
+  border-radius: 6px;
+  background: #dddcd1;
+  display: grid;
+  place-items: center;
+  font-size: 35px;
+  margin-bottom: 10px;
+}
+
+.fexonic-home .fx-food-card strong {
+  display: block;
+  font-size: 9px;
+  margin-bottom: 2px;
+}
+
+.fexonic-home .fx-food-card p {
+  color: #777;
+  font-size: 7px;
+  line-height: 1.4;
+}
+
+.fexonic-home .fx-phone {
+  position: absolute;
+  z-index: 8;
+  width: 145px;
+  height: 285px;
+  background: white;
+  color: #111;
+  right: -1%;
+  bottom: -3%;
+  border: 5px solid #111;
+  border-radius: 21px;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
+  padding: 15px 8px 8px;
+}
+
+.fexonic-home .fx-phone-notch {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 45px;
+  height: 5px;
+  border-radius: 99px;
+  background: #111;
+}
+
+.fexonic-home .fx-phone-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 7px;
+  margin-top: 8px;
+}
+
+.fexonic-home .fx-phone-search {
+  background: #f1f1ed;
+  color: #999;
+  padding: 6px;
+  border-radius: 6px;
+  margin: 9px 0 7px;
+  font-size: 6px;
+}
+
+.fexonic-home .fx-phone-categories {
+  display: flex;
+  gap: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.fexonic-home .fx-phone-categories span {
+  padding: 4px 5px;
+  border-radius: 5px;
+  background: #f1f1ed;
+  white-space: nowrap;
+  font-size: 5px;
+}
+
+.fexonic-home .fx-phone-categories span.active {
+  background: #111;
+  color: white;
+}
+
+.fexonic-home .fx-phone-food {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.fexonic-home .fx-phone-food-image {
+  width: 27px;
+  height: 27px;
+  background: #eee;
+  border-radius: 5px;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+}
+
+.fexonic-home .fx-phone-food-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.fexonic-home .fx-phone-food-info strong {
+  display: block;
+  font-size: 6px;
+  white-space: nowrap;
+}
+
+.fexonic-home .fx-phone-food-info span {
+  font-size: 6px;
+  color: #777;
+}
+
+.fexonic-home .fx-phone-add {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #111;
+  color: white;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+}
+
+.fexonic-home .fx-phone-nav {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 30px;
+  border-top: 1px solid #eee;
+  background: white;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  color: #999;
+  font-size: 10px;
+}
+
+.fexonic-home .fx-phone-nav .active {
+  color: #111;
+}
+
+.fexonic-home .fx-features-section {
+  padding: 90px 5%;
+  background: white;
+  display: grid;
+  grid-template-columns: 0.8fr 1.5fr;
+  gap: 70px;
+  align-items: center;
+}
+
+.fexonic-home .fx-features-intro > span,
+.fexonic-home .fx-section-label {
+  color: #80847e;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.fexonic-home .fx-features-intro h2,
+.fexonic-home .fx-how-section h2,
+.fexonic-home .fx-dark-section h2,
+.fexonic-home .fx-final-cta h2 {
+  font-size: clamp(36px, 4vw, 56px);
+  line-height: 1.05;
+  letter-spacing: -2.5px;
+  margin: 14px 0;
+}
+
+.fexonic-home .fx-features-intro p,
+.fexonic-home .fx-how-section > p,
+.fexonic-home .fx-final-cta > p {
+  color: #71756e;
+  line-height: 1.7;
+  max-width: 470px;
+  font-size: 14px;
+}
+
+.fexonic-home .fx-small-dark-btn {
+  padding: 13px 19px;
+  font-size: 12px;
+  margin-top: 17px;
+}
+
+.fexonic-home .fx-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.fexonic-home .fx-feature-card {
+  border: 1px solid #e6e7e2;
+  border-radius: 17px;
+  padding: 25px;
+  min-height: 190px;
+  transition: 0.2s ease;
+}
+
+.fexonic-home .fx-feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.06);
+}
+
+.fexonic-home .fx-feature-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f0f1eb;
+  display: grid;
+  place-items: center;
+  margin-bottom: 25px;
+  font-size: 17px;
+}
+
+.fexonic-home .fx-feature-card h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.fexonic-home .fx-feature-card p {
+  margin: 0;
+  color: #777b75;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.fexonic-home .fx-how-section {
+  padding: 110px 5%;
+  text-align: center;
+  background: #f7f7f3;
+}
+
+.fexonic-home .fx-how-section > p {
+  margin: 0 auto 55px;
+}
+
+.fexonic-home .fx-how-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  max-width: 1200px;
+  margin: auto;
+  gap: 15px;
+  text-align: left;
+}
+
+.fexonic-home .fx-step-card {
+  background: white;
+  border-radius: 16px;
+  padding: 25px;
+  min-height: 190px;
+  border: 1px solid #e5e6e1;
+}
+
+.fexonic-home .fx-step-number {
+  color: #999d97;
+  font-size: 11px;
+  font-weight: 800;
+  margin-bottom: 45px;
+}
+
+.fexonic-home .fx-step-card h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.fexonic-home .fx-step-card p {
+  margin: 0;
+  color: #777b75;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.fexonic-home .fx-dark-section {
+  background: #111;
+  color: white;
+  padding: 90px 5%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+}
+
+.fexonic-home .fx-section-label.light {
+  color: #777;
+}
+
+.fexonic-home .fx-dark-section h2 {
+  margin-bottom: 18px;
+}
+
+.fexonic-home .fx-dark-section p {
+  max-width: 480px;
+  color: #999;
+  line-height: 1.7;
+  font-size: 14px;
+}
+
+.fexonic-home .fx-white-btn {
+  margin-top: 20px;
+  background: white;
+  color: #111;
+  padding: 14px 22px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  transition: 0.2s;
+}
+
+.fexonic-home .fx-dark-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid #292929;
+  border-left: 1px solid #292929;
+}
+
+.fexonic-home .fx-dark-metrics div {
+  padding: 28px;
+  border-right: 1px solid #292929;
+  border-bottom: 1px solid #292929;
+}
+
+.fexonic-home .fx-dark-metrics strong {
+  display: block;
+  color: #555;
+  font-size: 11px;
+  margin-bottom: 22px;
+}
+
+.fexonic-home .fx-dark-metrics span {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.fexonic-home .fx-final-cta {
+  background: white;
+  text-align: center;
+  padding: 110px 5%;
+}
+
+.fexonic-home .fx-final-cta > span {
+  color: #858982;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  font-weight: 800;
+}
+
+.fexonic-home .fx-final-cta h2 {
+  margin-bottom: 18px;
+}
+
+.fexonic-home .fx-final-cta > p {
+  margin: auto;
+}
+
+.fexonic-home .fx-final-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.fexonic-home .fx-footer {
+  background: #111;
+  color: white;
+  padding: 50px 5% 25px;
+}
+
+.fexonic-home .fx-footer-brand {
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -1px;
+}
+
+.fexonic-home .fx-footer-brand p {
+  color: #777;
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 8px;
+}
+
+.fexonic-home .fx-footer-links {
+  display: flex;
+  justify-content: flex-end;
+  gap: 30px;
+  margin-top: -25px;
+}
+
+.fexonic-home .fx-footer-links a {
+  color: #aaa;
+  text-decoration: none;
+  font-size: 11px;
+}
+
+.fexonic-home .fx-footer-bottom {
+  border-top: 1px solid #292929;
+  margin-top: 40px;
+  padding-top: 20px;
+  display: flex;
+  justify-content: space-between;
+  color: #666;
+  font-size: 9px;
+}
+
+/* =========================
+   TABLET
+========================= */
+
+@media (max-width: 1100px) {
+  .fexonic-home .fx-home-links {
+    gap: 20px;
+  }
+
+  .fexonic-home .fx-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .fexonic-home .fx-hero-right {
+    min-height: 470px;
+  }
+
+  .fexonic-home .fx-hero-left {
+    max-width: 850px;
+  }
+
+  .fexonic-home .fx-features-section {
+    grid-template-columns: 1fr;
+  }
+
+  .fexonic-home .fx-how-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 768px) {
+  .fexonic-home .fx-home-nav {
+    height: 68px;
+    padding: 0 18px;
+  }
+
+  .fexonic-home .fx-home-logo {
+    font-size: 22px;
+  }
+
+  .fexonic-home .fx-home-links {
+    display: none;
+  }
+
+  .fexonic-home .fx-home-actions {
+    gap: 10px;
+  }
+
+  .fexonic-home .fx-login {
+    font-size: 12px;
+  }
+
+  .fexonic-home .fx-dark-btn {
+    padding: 10px 15px;
+    font-size: 11px;
+  }
+
+  .fexonic-home .fx-hero {
+    padding: 50px 18px 35px;
+    display: block;
+  }
+
+  .fexonic-home .fx-hero h1 {
+    font-size: 47px;
+    letter-spacing: -2.8px;
+  }
+
+  .fexonic-home .fx-hero-description {
+    font-size: 14px;
+  }
+
+  .fexonic-home .fx-mini-features {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .fexonic-home .fx-stats {
+    gap: 25px;
+  }
+
+  .fexonic-home .fx-stats strong {
+    font-size: 17px;
+  }
+
+  .fexonic-home .fx-stats span {
+    font-size: 8px;
+  }
+
+  .fexonic-home .fx-hero-right {
+    margin-top: 45px;
+    min-height: 330px;
+  }
+
+  .fexonic-home .fx-food-circle {
+    width: 210px;
+    height: 210px;
+    right: 0;
+  }
+
+  .fexonic-home .fx-food-plate {
+    width: 145px;
+    height: 145px;
+    font-size: 55px;
+  }
+
+  .fexonic-home .fx-dashboard {
+    width: 100%;
+    min-height: 240px;
+    margin: 45px 0 0;
+    border-radius: 13px;
+  }
+
+  .fexonic-home .fx-dashboard-sidebar {
+    display: none;
+  }
+
+  .fexonic-home .fx-dashboard-main {
+    padding: 13px;
+  }
+
+  .fexonic-home .fx-dashboard-top strong {
+    font-size: 9px;
+  }
+
+  .fexonic-home .fx-dashboard-top span {
+    font-size: 6px;
+  }
+
+  .fexonic-home .fx-stat-grid {
+    gap: 4px;
+  }
+
+  .fexonic-home .fx-dashboard-stat {
+    padding: 7px;
+  }
+
+  .fexonic-home .fx-dashboard-stat span {
+    font-size: 5px;
+  }
+
+  .fexonic-home .fx-dashboard-stat strong {
+    font-size: 11px;
+  }
+
+  .fexonic-home .fx-dashboard-content {
+    grid-template-columns: 1fr;
+  }
+
+  .fexonic-home .fx-food-card {
+    display: none;
+  }
+
+  .fexonic-home .fx-order-row {
+    font-size: 5px;
+  }
+
+  .fexonic-home .fx-phone {
+    width: 105px;
+    height: 210px;
+    right: -3px;
+    bottom: -10px;
+    border-width: 4px;
+  }
+
+  .fexonic-home .fx-phone-food-image {
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+  }
+
+  .fexonic-home .fx-phone-food-info strong,
+  .fexonic-home .fx-phone-food-info span {
+    font-size: 5px;
+  }
+
+  .fexonic-home .fx-features-section,
+  .fexonic-home .fx-how-section,
+  .fexonic-home .fx-dark-section,
+  .fexonic-home .fx-final-cta {
+    padding: 70px 18px;
+  }
+
+  .fexonic-home .fx-feature-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fexonic-home .fx-how-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fexonic-home .fx-dark-section {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .fexonic-home .fx-dark-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .fexonic-home .fx-footer-links {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    margin-top: 25px;
+    gap: 16px;
+  }
+
+  .fexonic-home .fx-footer-bottom {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* =========================
+   SMALL PHONES
+========================= */
+
+@media (max-width: 450px) {
+  .fexonic-home .fx-hero h1 {
+    font-size: 40px;
+  }
+
+  .fexonic-home .fx-hero-buttons {
+    flex-direction: column;
+  }
+
+  .fexonic-home .fx-primary-btn,
+  .fexonic-home .fx-outline-btn {
+    justify-content: center;
+  }
+
+  .fexonic-home .fx-stats {
+    gap: 15px;
+  }
+
+  .fexonic-home .fx-dashboard {
+    transform: scale(0.95);
+    transform-origin: left center;
+    width: 106%;
+  }
+
+  .fexonic-home .fx-phone {
+    transform: scale(0.9);
+    transform-origin: bottom right;
+  }
+}
