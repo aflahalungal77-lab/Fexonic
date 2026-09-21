@@ -4012,17 +4012,14 @@ a {
    ========================================================= */
 
 @media (max-width: 768px) {
+ @media (max-width: 768px) {
   body {
-    background: #111;
+    background: var(--bg);
   }
 
   .fx-app {
     min-height: 100dvh;
-    background: #111;
-  }
-
-  .fx-sidebar {
-    display: none;
+    background: var(--fx-page);
   }
 
   .fx-main {
@@ -4030,17 +4027,16 @@ a {
     min-height: 100dvh;
     margin-left: 0;
     padding-bottom: 72px;
-    background: #111;
+    background: var(--fx-page);
   }
 
   .fx-topbar {
     height: 82px;
     padding: 12px 20px;
-    background: #111;
-    border-bottom: 0;
-    color: #fff;
+    background: #fff;
+    border-bottom: 1px solid #e7e7e4;
+    color: #111;
   }
-
   .fx-topbar-left {
     min-width: 0;
   }
@@ -7468,7 +7464,7 @@ a {
    ========================================================= */
 
 @media (max-width: 768px) {
-
+  
   .mt-page {
     padding-bottom: 8px;
   }
