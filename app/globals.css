@@ -4029,6 +4029,9 @@ a {
     padding-bottom: 72px;
     background: var(--fx-page);
   }
+    .fx-sidebar {
+    display: none;
+  }
 
   .fx-topbar {
     height: 82px;
@@ -7683,5 +7686,4 @@ a {
     grid-template-columns: 1fr 1fr;
   }
 
-}
 }
