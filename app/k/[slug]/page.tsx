@@ -1,720 +1,1548 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase";
 
-type Restaurant = {
+type OrderStatus =
+  | "NEW"
+  | "PREPARING"
+  | "READY"
+  | "SERVED"
+  | "CANCELLED";
+
+type Order = {
   id: string;
-  name: string;
-  slug: string;
+  status: OrderStatus;
+  total: number | string | null;
+  created_at: string;
+  table_id?: string | null;
+  tables?: { name: string } | null;
+  order_items?: Array<{
+    id: string;
+    name: string;
+    quantity: number;
+    price: number | string;
+  }>;
 };
 
-type Stats = {
-  orders: number;
-  newOrders: number;
-  preparingOrders: number;
-  pendingRequests: number;
-  menuItems: number;
-  tables: number;
+type CustomerRequest = {
+  id: string;
+  type:
+    | "TISSUE"
+    | "CUTLERY"
+    | "WATER"
+    | "EXTRA_FOOD"
+    | "CALL_WAITER"
+    | "OTHER";
+  message: string | null;
+  status: "PENDING" | "DONE";
+  created_at: string;
+  table_id: string;
+  tables?: { name: string } | null;
 };
 
-const EMPTY_STATS: Stats = {
-  orders: 0,
-  newOrders: 0,
-  preparingOrders: 0,
-  pendingRequests: 0,
-  menuItems: 0,
-  tables: 0,
+type OrderCounts = {
+  today: number;
+  week: number;
+  month: number;
+  overall: number;
 };
 
-export default function RestaurantDashboard({
+const requestLabels: Record<CustomerRequest["type"], string> = {
+  TISSUE: "Tissue needed",
+  CUTLERY: "Cutlery needed",
+  WATER: "Water needed",
+  EXTRA_FOOD: "Extra food",
+  CALL_WAITER: "Call waiter",
+  OTHER: "Customer request",
+};
+
+const statusLabels: Record<OrderStatus, string> = {
+  NEW: "New",
+  PREPARING: "Preparing",
+  READY: "Ready",
+  SERVED: "Served",
+  CANCELLED: "Cancelled",
+};
+
+function formatTime(value: string) {
+  return new Date(value).toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+  });
+}
+
+function shortOrderId(id: string) {
+  return `#${id.slice(0, 6).toUpperCase()}`;
+}
+
+/**
+ * Returns the start of today in the restaurant's expected timezone.
+ *
+ * Fexonic currently targets Indian restaurants, so the dashboard
+ * uses Asia/Kolkata for business-day calculations.
+ */
+function getIndiaDateParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const result: Record<string, string> = {};
+
+  for (const part of parts) {
+    if (part.type !== "literal") {
+      result[part.type] = part.value;
+    }
+  }
+
+  return {
+    year: Number(result.year),
+    month: Number(result.month),
+    day: Number(result.day),
+  };
+}
+
+/**
+ * Converts an India calendar date/time into a UTC Date.
+ *
+ * Example:
+ * 2026-09-21 00:00 IST
+ * becomes
+ * 2026-09-20 18:30 UTC
+ */
+function indiaDateToUTC(
+  year: number,
+  month: number,
+  day: number,
+  hour = 0,
+  minute = 0,
+  second = 0,
+) {
+  return new Date(
+    Date.UTC(year, month - 1, day, hour - 5, minute - 30, second),
+  );
+}
+
+/**
+ * Get business-period boundaries:
+ *
+ * todayStart
+ * weekStart (Monday)
+ * monthStart
+ * tomorrowStart
+ */
+function getOrderPeriodBounds() {
+  const now = new Date();
+  const india = getIndiaDateParts(now);
+
+  const todayStart = indiaDateToUTC(
+    india.year,
+    india.month,
+    india.day,
+  );
+
+  const tomorrowDate = new Date(todayStart);
+  tomorrowDate.setUTCDate(tomorrowDate.getUTCDate() + 1);
+
+  const monthStart = indiaDateToUTC(
+    india.year,
+    india.month,
+    1,
+  );
+
+  /**
+   * JavaScript:
+   * Sunday = 0
+   * Monday = 1
+   * ...
+   *
+   * We want Monday as the beginning of the business week.
+   */
+  const weekday = new Date(todayStart).getUTCDay();
+
+  const daysSinceMonday = weekday === 0 ? 6 : weekday - 1;
+
+  const weekStart = new Date(todayStart);
+  weekStart.setUTCDate(
+    weekStart.getUTCDate() - daysSinceMonday,
+  );
+
+  return {
+    todayStart: todayStart.toISOString(),
+    tomorrowStart: tomorrowDate.toISOString(),
+    weekStart: weekStart.toISOString(),
+    monthStart: monthStart.toISOString(),
+  };
+}
+
+export default function KitchenDashboard({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  const router = useRouter();
+
   const [slug, setSlug] = useState("");
+  const [restaurant, setRestaurant] = useState<any>(null);
 
-  const [restaurant, setRestaurant] =
-    useState<Restaurant | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [requests, setRequests] = useState<CustomerRequest[]>([]);
 
-  const [stats, setStats] =
-    useState<Stats>(EMPTY_STATS);
+  const [orderCounts, setOrderCounts] = useState<OrderCounts>({
+    today: 0,
+    week: 0,
+    month: 0,
+    overall: 0,
+  });
 
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const [error, setError] =
-    useState("");
+  const [busyOrder, setBusyOrder] = useState<string | null>(null);
+  const [busyRequest, setBusyRequest] = useState<string | null>(null);
 
-  /*
-   * Resolve slug
-   */
+  const [mobileMenu, setMobileMenu] = useState(false);
+
   useEffect(() => {
-    let mounted = true;
-
-    params.then((value) => {
-      if (mounted) {
-        setSlug(value.slug);
-      }
-    });
-
-    return () => {
-      mounted = false;
-    };
+    params.then((value) => setSlug(value.slug));
   }, [params]);
 
-  /*
-   * Load restaurant
-   */
-  const loadRestaurant =
-    useCallback(async () => {
-      if (!slug) return null;
+  const loadDashboard = useCallback(async () => {
+    if (!slug) return;
 
-      const supabase =
-        supabaseBrowser();
+    const supabase = supabaseBrowser();
 
+    setRefreshing(true);
+
+    try {
+      /**
+       * ------------------------------------------------------------
+       * 1. Load restaurant
+       * ------------------------------------------------------------
+       */
       const {
-        data,
-        error,
+        data: restaurantData,
+        error: restaurantError,
       } = await supabase
         .from("restaurants")
-        .select("id,name,slug")
+        .select("*")
         .eq("slug", slug)
         .single();
+
+      if (restaurantError || !restaurantData) {
+        router.replace("/kitchen");
+        return;
+      }
+
+      setRestaurant(restaurantData);
+
+      /**
+       * ------------------------------------------------------------
+       * 2. Load live dashboard data + order counts in parallel
+       * ------------------------------------------------------------
+       *
+       * Live orders:
+       * NEW / PREPARING / READY
+       *
+       * Historical counts:
+       * Today / Week / Month / Overall
+       *
+       * The historical queries use COUNT on the database instead
+       * of downloading every order into the browser.
+       */
+      const {
+        todayStart,
+        tomorrowStart,
+        weekStart,
+        monthStart,
+      } = getOrderPeriodBounds();
+
+      const [
+        { data: orderData, error: orderError },
+        { data: requestData, error: requestError },
+
+        todayCountResult,
+        weekCountResult,
+        monthCountResult,
+        overallCountResult,
+      ] = await Promise.all([
+        /**
+         * Live orders
+         */
+        supabase
+          .from("orders")
+          .select(
+            "id,status,total,created_at,table_id,tables(name),order_items(id,name,quantity,price)",
+          )
+          .eq("restaurant_id", restaurantData.id)
+          .in("status", ["NEW", "PREPARING", "READY"])
+          .order("created_at", { ascending: false })
+          .limit(30),
+
+        /**
+         * Pending customer requests
+         */
+        supabase
+          .from("customer_requests")
+          .select(
+            "id,type,message,status,created_at,table_id,tables(name)",
+          )
+          .eq("restaurant_id", restaurantData.id)
+          .eq("status", "PENDING")
+          .order("created_at", { ascending: false })
+          .limit(20),
+
+        /**
+         * TODAY
+         */
+        supabase
+          .from("orders")
+          .select("id", {
+            count: "exact",
+            head: true,
+          })
+          .eq("restaurant_id", restaurantData.id)
+          .gte("created_at", todayStart)
+          .lt("created_at", tomorrowStart),
+
+        /**
+         * THIS WEEK
+         */
+        supabase
+          .from("orders")
+          .select("id", {
+            count: "exact",
+            head: true,
+          })
+          .eq("restaurant_id", restaurantData.id)
+          .gte("created_at", weekStart),
+
+        /**
+         * THIS MONTH
+         */
+        supabase
+          .from("orders")
+          .select("id", {
+            count: "exact",
+            head: true,
+          })
+          .eq("restaurant_id", restaurantData.id)
+          .gte("created_at", monthStart),
+
+        /**
+         * OVERALL
+         */
+        supabase
+          .from("orders")
+          .select("id", {
+            count: "exact",
+            head: true,
+          })
+          .eq("restaurant_id", restaurantData.id),
+      ]);
+
+      /**
+       * ------------------------------------------------------------
+       * Error handling
+       * ------------------------------------------------------------
+       */
+      if (orderError) {
+        throw orderError;
+      }
+
+      if (requestError) {
+        throw requestError;
+      }
+
+      if (todayCountResult.error) {
+        throw todayCountResult.error;
+      }
+
+      if (weekCountResult.error) {
+        throw weekCountResult.error;
+      }
+
+      if (monthCountResult.error) {
+        throw monthCountResult.error;
+      }
+
+      if (overallCountResult.error) {
+        throw overallCountResult.error;
+      }
+
+      /**
+       * ------------------------------------------------------------
+       * Update state
+       * ------------------------------------------------------------
+       */
+      setOrders(orderData || []);
+      setRequests(requestData || []);
+
+      setOrderCounts({
+        today: todayCountResult.count || 0,
+        week: weekCountResult.count || 0,
+        month: monthCountResult.count || 0,
+        overall: overallCountResult.count || 0,
+      });
+    } catch (error) {
+      console.error("Dashboard loading error:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [router, slug]);
+
+  /**
+   * Initial dashboard load
+   */
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
+  /**
+   * Auto refresh.
+   *
+   * This keeps the existing 8-second dashboard refresh behavior.
+   */
+  useEffect(() => {
+    if (!restaurant?.id) return;
+
+    const interval = window.setInterval(
+      loadDashboard,
+      8000,
+    );
+
+    return () => window.clearInterval(interval);
+  }, [loadDashboard, restaurant?.id]);
+
+  /**
+   * ------------------------------------------------------------
+   * Update order status
+   * ------------------------------------------------------------
+   */
+  async function updateOrderStatus(
+    orderId: string,
+    status: OrderStatus,
+  ) {
+    if (!restaurant?.id) return;
+
+    setBusyOrder(orderId);
+
+    try {
+      const { error } = await supabaseBrowser()
+        .from("orders")
+        .update({ status })
+        .eq("id", orderId)
+        .eq("restaurant_id", restaurant.id);
 
       if (error) {
         throw error;
       }
 
-      setRestaurant(data);
+      /**
+       * Refresh both live orders and historical counters.
+       */
+      await loadDashboard();
+    } catch (error: any) {
+      window.alert(
+        error?.message ||
+          "Could not update order status",
+      );
+    } finally {
+      setBusyOrder(null);
+    }
+  }
 
-      return data as Restaurant;
-    }, [slug]);
-
-  /*
-   * Load lightweight dashboard stats.
-   *
-   * IMPORTANT:
-   * We do NOT load the actual orders/menu/table
-   * rows here.
-   *
-   * This keeps the dashboard fast even when the
-   * restaurant has thousands of orders.
+  /**
+   * ------------------------------------------------------------
+   * Complete customer request
+   * ------------------------------------------------------------
    */
-  const loadStats =
-    useCallback(
-      async (restaurantId: string) => {
-        const supabase =
-          supabaseBrowser();
+  async function completeRequest(requestId: string) {
+    setBusyRequest(requestId);
 
-        const [
-          ordersResult,
-          newOrdersResult,
-          preparingOrdersResult,
-          requestsResult,
-          menuResult,
-          tablesResult,
-        ] = await Promise.all([
-          supabase
-            .from("orders")
-            .select("id", {
-              count: "exact",
-              head: true,
-            })
-            .eq(
-              "restaurant_id",
-              restaurantId
-            ),
+    try {
+      const response = await fetch(
+        "/api/requests",
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: requestId,
+            status: "DONE",
+          }),
+        },
+      );
 
-          supabase
-            .from("orders")
-            .select("id", {
-              count: "exact",
-              head: true,
-            })
-            .eq(
-              "restaurant_id",
-              restaurantId
-            )
-            .eq("status", "NEW"),
+      const data = await response.json();
 
-          supabase
-            .from("orders")
-            .select("id", {
-              count: "exact",
-              head: true,
-            })
-            .eq(
-              "restaurant_id",
-              restaurantId
-            )
-            .eq(
-              "status",
-              "PREPARING"
-            ),
-
-          supabase
-            .from("customer_requests")
-            .select("id", {
-              count: "exact",
-              head: true,
-            })
-            .eq(
-              "restaurant_id",
-              restaurantId
-            )
-            .eq(
-              "status",
-              "PENDING"
-            ),
-
-          supabase
-            .from("menu_items")
-            .select("id", {
-              count: "exact",
-              head: true,
-            })
-            .eq(
-              "restaurant_id",
-              restaurantId
-            ),
-
-          supabase
-            .from("tables")
-            .select("id", {
-              count: "exact",
-              head: true,
-            })
-            .eq(
-              "restaurant_id",
-              restaurantId
-            ),
-        ]);
-
-        if (ordersResult.error) {
-          throw ordersResult.error;
-        }
-
-        if (newOrdersResult.error) {
-          throw newOrdersResult.error;
-        }
-
-        if (
-          preparingOrdersResult.error
-        ) {
-          throw preparingOrdersResult.error;
-        }
-
-        if (requestsResult.error) {
-          throw requestsResult.error;
-        }
-
-        if (menuResult.error) {
-          throw menuResult.error;
-        }
-
-        if (tablesResult.error) {
-          throw tablesResult.error;
-        }
-
-        setStats({
-          orders:
-            ordersResult.count || 0,
-
-          newOrders:
-            newOrdersResult.count || 0,
-
-          preparingOrders:
-            preparingOrdersResult.count ||
-            0,
-
-          pendingRequests:
-            requestsResult.count || 0,
-
-          menuItems:
-            menuResult.count || 0,
-
-          tables:
-            tablesResult.count || 0,
-        });
-      },
-      []
-    );
-
-  /*
-   * Initial page load
-   */
-  const loadDashboard =
-    useCallback(async () => {
-      if (!slug) return;
-
-      try {
-        setLoading(true);
-        setError("");
-
-        const restaurantData =
-          await loadRestaurant();
-
-        if (!restaurantData) {
-          return;
-        }
-
-        await loadStats(
-          restaurantData.id
+      if (!response.ok) {
+        throw new Error(
+          data?.error ||
+            "Could not complete request",
         );
-      } catch (error: any) {
-        console.error(error);
-
-        setError(
-          error?.message ||
-            "Failed to load dashboard."
-        );
-      } finally {
-        setLoading(false);
       }
-    }, [
-      slug,
-      loadRestaurant,
-      loadStats,
-    ]);
 
-  useEffect(() => {
-    void loadDashboard();
-  }, [loadDashboard]);
+      await loadDashboard();
+    } catch (error: any) {
+      window.alert(
+        error?.message ||
+          "Could not complete request",
+      );
+    } finally {
+      setBusyRequest(null);
+    }
+  }
 
-  /*
-   * Loading
+  /**
+   * ------------------------------------------------------------
+   * Live dashboard stats
+   * ------------------------------------------------------------
    */
-  if (loading) {
+  const stats = useMemo(() => {
+    const newOrders = orders.filter(
+      (order) => order.status === "NEW",
+    ).length;
+
+    const preparing = orders.filter(
+      (order) => order.status === "PREPARING",
+    ).length;
+
+    const ready = orders.filter(
+      (order) => order.status === "READY",
+    ).length;
+
+    return {
+      newOrders,
+      preparing,
+      ready,
+      requests: requests.length,
+    };
+  }, [orders, requests]);
+
+  /**
+   * Navigate inside kitchen workspace.
+   */
+  const go = (path: string) => {
+    setMobileMenu(false);
+    router.push(path);
+  };
+
+  /**
+   * ------------------------------------------------------------
+   * Loading state
+   * ------------------------------------------------------------
+   */
+  if (loading && !restaurant) {
     return (
-      <main className="container">
-        <header className="top">
-          <div className="brand">
-            FEXONIC
+      <main className="fx-app">
+        <div className="fx-loading-screen">
+          <div className="fx-loading-card">
+            <div className="fx-logo-mark">
+              F
+            </div>
+
+            <strong>
+              Fexonic Kitchen
+            </strong>
+
+            <p>
+              Preparing your workspace…
+            </p>
           </div>
-        </header>
-
-        <section className="hero">
-          <div className="eyebrow">
-            RESTAURANT WORKSPACE
-          </div>
-
-          <h1>
-            Loading dashboard...
-          </h1>
-
-          <p className="muted">
-            Preparing your restaurant
-            workspace.
-          </p>
-        </section>
+        </div>
       </main>
     );
   }
 
-  /*
-   * Error / restaurant not found
-   */
-  if (error || !restaurant) {
-    return (
-      <main className="container">
-        <div
-          className="card"
-          style={{
-            marginTop: 60,
-            textAlign: "center",
-          }}
-        >
-          <div className="eyebrow">
-            FEXONIC
-          </div>
-
-          <h2>
-            Workspace unavailable
-          </h2>
-
-          <p className="muted">
-            {error ||
-              "Restaurant not found."}
-          </p>
-
-          <button
-            className="btn"
-            onClick={() =>
-              void loadDashboard()
-            }
-          >
-            Try again
-          </button>
-        </div>
-      </main>
-    );
+  if (!restaurant) {
+    return null;
   }
 
   return (
-    <main className="container">
-      {/* HEADER */}
-
-      <header className="top">
-        <div>
-          <div className="brand">
-            FEXONIC
+    <main className="fx-app">
+      {/* =========================================================
+          DESKTOP SIDEBAR
+      ========================================================== */}
+      <aside className="fx-sidebar">
+        <div className="fx-sidebar-brand">
+          <div className="fx-brand-mark">
+            F
           </div>
 
-          <div
-            className="muted smalltext"
-            style={{
-              marginTop: 3,
-            }}
-          >
-            Restaurant Workspace
+          <div>
+            <strong>Fexonic</strong>
+            <span>
+              Kitchen workspace
+            </span>
           </div>
         </div>
 
-        <div className="nav">
-          <span className="pill">
-            {restaurant.name}
+        <div className="fx-restaurant-mini">
+          <span className="fx-avatar">
+            {String(
+              restaurant.name || "R",
+            )
+              .slice(0, 1)
+              .toUpperCase()}
           </span>
 
+          <div>
+            <strong>
+              {restaurant.name}
+            </strong>
+
+            <span>
+              Restaurant workspace
+            </span>
+          </div>
+        </div>
+
+        <nav className="fx-sidebar-nav">
           <button
-            className="btn light small"
+            className="active"
             onClick={() =>
-              void loadDashboard()
+              go(`/k/${slug}`)
             }
           >
-            Refresh
+            <span>⌂</span>
+            Dashboard
+          </button>
+
+          <button
+            onClick={() =>
+              go(`/k/${slug}/orders`)
+            }
+          >
+            <span>▤</span>
+            Orders
+
+            {stats.newOrders > 0 && (
+              <b>{stats.newOrders}</b>
+            )}
+          </button>
+
+          <button
+            onClick={() =>
+              go(`/k/${slug}/requests`)
+            }
+          >
+            <span>♧</span>
+            Requests
+
+            {stats.requests > 0 && (
+              <b>{stats.requests}</b>
+            )}
+          </button>
+
+          <button
+            onClick={() =>
+              go(`/k/${slug}/manage`)
+            }
+          >
+            <span>▦</span>
+            Menu & Tables
+          </button>
+        </nav>
+
+        <div className="fx-sidebar-bottom">
+          <button
+            onClick={() =>
+              go(`/k/${slug}/manage`)
+            }
+          >
+            <span>⚙</span>
+            Manage workspace
           </button>
 
           <a
-            className="btn light small"
             href="/api/auth/signout"
+            className="fx-sidebar-logout"
           >
+            <span>↪</span>
             Sign out
           </a>
         </div>
-      </header>
+      </aside>
 
-      {/* HERO */}
-
-      <section className="dashboard-hero">
-        <div className="eyebrow">
-          RESTAURANT WORKSPACE
-        </div>
-
-        <h1>
-          {restaurant.name}
-        </h1>
-
-        <p className="muted">
-          Manage your restaurant,
-          receive orders and control
-          your QR menu.
-        </p>
-      </section>
-
-      {/* MAIN ACTIONS */}
-
-      <section
-        className="grid grid2"
-        style={{
-          marginTop: 20,
-        }}
-      >
-        {/* ORDERS */}
-
-        <a
-          href={`/k/${restaurant.slug}/orders`}
-          className="card"
-          style={{
-            textDecoration: "none",
-            color: "inherit",
-            display: "block",
-            cursor: "pointer",
-          }}
-        >
-          <div className="row">
-            <div>
-              <div className="eyebrow">
-                LIVE OPERATIONS
-              </div>
-
-              <h2
-                style={{
-                  marginTop: 8,
-                  marginBottom: 5,
-                }}
-              >
-                Orders
-              </h2>
-
-              <p className="muted">
-                View every customer
-                order and customer
-                request.
-              </p>
-            </div>
-
-            <span
-              style={{
-                fontSize: 32,
-              }}
-            >
-              →
-            </span>
-          </div>
-
-          <div
-            className="grid grid3"
-            style={{
-              marginTop: 20,
-            }}
-          >
-            <div>
-              <div className="muted smalltext">
-                Total
-              </div>
-
-              <strong
-                style={{
-                  fontSize: 24,
-                }}
-              >
-                {stats.orders}
-              </strong>
-            </div>
-
-            <div>
-              <div className="muted smalltext">
-                New
-              </div>
-
-              <strong
-                style={{
-                  fontSize: 24,
-                }}
-              >
-                {stats.newOrders}
-              </strong>
-            </div>
-
-            <div>
-              <div className="muted smalltext">
-                Requests
-              </div>
-
-              <strong
-                style={{
-                  fontSize: 24,
-                }}
-              >
-                {stats.pendingRequests}
-              </strong>
-            </div>
-          </div>
-        </a>
-
-        {/* MENU */}
-
-        <a
-          href={`/k/${restaurant.slug}/manage`}
-          className="card"
-          style={{
-            textDecoration: "none",
-            color: "inherit",
-            display: "block",
-            cursor: "pointer",
-          }}
-        >
-          <div className="row">
-            <div>
-              <div className="eyebrow">
-                MANAGEMENT
-              </div>
-
-              <h2
-                style={{
-                  marginTop: 8,
-                  marginBottom: 5,
-                }}
-              >
-                Menu & QR
-              </h2>
-
-              <p className="muted">
-                Manage food items,
-                tables and QR codes.
-              </p>
-            </div>
-
-            <span
-              style={{
-                fontSize: 32,
-              }}
-            >
-              →
-            </span>
-          </div>
-
-          <div
-            className="grid grid2"
-            style={{
-              marginTop: 20,
-            }}
-          >
-            <div>
-              <div className="muted smalltext">
-                Menu items
-              </div>
-
-              <strong
-                style={{
-                  fontSize: 24,
-                }}
-              >
-                {stats.menuItems}
-              </strong>
-            </div>
-
-            <div>
-              <div className="muted smalltext">
-                Tables
-              </div>
-
-              <strong
-                style={{
-                  fontSize: 24,
-                }}
-              >
-                {stats.tables}
-              </strong>
-            </div>
-          </div>
-        </a>
-      </section>
-
-      {/* LIVE SUMMARY */}
-
-      <section
-        className="card dashboard-section"
-      >
-        <div className="eyebrow">
-          TODAY'S WORKSPACE
-        </div>
-
-        <h2
-          style={{
-            marginTop: 8,
-          }}
-        >
-          Quick overview
-        </h2>
-
+      {/* =========================================================
+          MOBILE DRAWER
+      ========================================================== */}
+      {mobileMenu && (
         <div
-          className="grid grid4"
-          style={{
-            marginTop: 20,
-          }}
+          className="fx-mobile-overlay"
+          onClick={() =>
+            setMobileMenu(false)
+          }
         >
-          <div className="stat">
-            <span className="muted smalltext">
-              All orders
-            </span>
+          <aside
+            className="fx-mobile-drawer"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <div className="fx-drawer-top">
+              <div>
+                <strong>
+                  {restaurant.name}
+                </strong>
 
-            <strong>
-              {stats.orders}
-            </strong>
-          </div>
+                <span>
+                  Powered by Fexonic
+                </span>
+              </div>
 
-          <div className="stat">
-            <span className="muted smalltext">
-              New orders
-            </span>
+              <button
+                onClick={() =>
+                  setMobileMenu(false)
+                }
+                aria-label="Close menu"
+              >
+                ×
+              </button>
+            </div>
 
-            <strong>
-              {stats.newOrders}
-            </strong>
-          </div>
+            <div className="fx-drawer-links">
+              <button
+                onClick={() =>
+                  go(`/k/${slug}`)
+                }
+              >
+                ⌂ Dashboard
+              </button>
 
-          <div className="stat">
-            <span className="muted smalltext">
-              Preparing
-            </span>
+              <button
+                onClick={() =>
+                  go(`/k/${slug}/orders`)
+                }
+              >
+                ▤ Orders
+              </button>
 
-            <strong>
-              {stats.preparingOrders}
-            </strong>
-          </div>
+              <button
+                onClick={() =>
+                  go(`/k/${slug}/requests`)
+                }
+              >
+                ♧ Requests
+              </button>
 
-          <div className="stat">
-            <span className="muted smalltext">
-              Pending requests
-            </span>
+              <button
+                onClick={() =>
+                  go(`/k/${slug}/manage`)
+                }
+              >
+                ▦ Menu & Tables
+              </button>
+            </div>
 
-            <strong>
-              {stats.pendingRequests}
-            </strong>
-          </div>
+            <a
+              href="/api/auth/signout"
+              className="fx-drawer-logout"
+            >
+              ↪ Sign out
+            </a>
+          </aside>
         </div>
-      </section>
-
-      {/* IMPORTANT NOTICE */}
-
-      {(stats.newOrders > 0 ||
-        stats.pendingRequests > 0) && (
-        <section
-          className="card dashboard-section"
-          style={{
-            border:
-              "1px solid var(--ink)",
-          }}
-        >
-          <div className="eyebrow">
-            ACTION NEEDED
-          </div>
-
-          <h2
-            style={{
-              marginTop: 8,
-            }}
-          >
-            You have new activity
-          </h2>
-
-          <p className="muted">
-            {stats.newOrders > 0 &&
-              `${stats.newOrders} new order${
-                stats.newOrders === 1
-                  ? ""
-                  : "s"
-              }`}
-
-            {stats.newOrders > 0 &&
-              stats.pendingRequests >
-                0 &&
-              " and "}
-
-            {stats.pendingRequests >
-              0 &&
-              `${stats.pendingRequests} pending customer request${
-                stats.pendingRequests === 1
-                  ? ""
-                  : "s"
-              }`}
-            .
-          </p>
-
-          <a
-            className="btn"
-            href={`/k/${restaurant.slug}/orders`}
-          >
-            Open Orders
-          </a>
-        </section>
       )}
 
-      <footer className="footer">
-        Fexonic · {restaurant.name}
-      </footer>
+      {/* =========================================================
+          MAIN
+      ========================================================== */}
+      <div className="fx-main">
+        {/* =======================================================
+            TOP BAR
+        ======================================================== */}
+        <header className="fx-topbar">
+          <div className="fx-topbar-title">
+            <span className="fx-mobile-brand">
+              FEXONIC
+            </span>
+
+            <span className="fx-desktop-context">
+              Kitchen workspace / Dashboard
+            </span>
+          </div>
+
+          <div className="fx-topbar-actions">
+            <button
+              className="fx-round-button"
+              onClick={loadDashboard}
+              disabled={refreshing}
+              aria-label="Refresh dashboard"
+            >
+              {refreshing ? "…" : "↻"}
+            </button>
+
+            <button
+              className="fx-round-button fx-mobile-only"
+              onClick={() =>
+                setMobileMenu(true)
+              }
+              aria-label="Open menu"
+            >
+              ☰
+            </button>
+
+            <a
+              className="fx-topbar-profile"
+              href="/api/auth/signout"
+            >
+              <span className="fx-avatar">
+                {String(
+                  restaurant.name || "R",
+                )
+                  .slice(0, 1)
+                  .toUpperCase()}
+              </span>
+
+              <span>
+                <strong>
+                  {restaurant.name}
+                </strong>
+
+                <small>
+                  Restaurant
+                </small>
+              </span>
+            </a>
+          </div>
+        </header>
+
+        <div className="fx-content">
+          {/* =====================================================
+              WELCOME
+          ====================================================== */}
+          <section className="fx-welcome-row">
+            <div>
+              <p className="fx-kicker">
+                KITCHEN DASHBOARD
+              </p>
+
+              <h1>
+                Good morning<span>.</span>
+              </h1>
+
+              <p className="fx-muted">
+                Keep orders moving and your
+                guests happy.
+              </p>
+            </div>
+
+            <div className="fx-date-block">
+              <strong>
+                {new Date().toLocaleDateString(
+                  "en-IN",
+                  {
+                    weekday: "long",
+                  },
+                )}
+              </strong>
+
+              <span>
+                {new Date().toLocaleDateString(
+                  "en-IN",
+                  {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  },
+                )}
+              </span>
+
+              <small>
+                {new Date().toLocaleTimeString(
+                  "en-IN",
+                  {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  },
+                )}
+              </small>
+            </div>
+          </section>
+
+          {/* =====================================================
+              ACTION NEEDED
+          ====================================================== */}
+          <section className="fx-action-card">
+            <div className="fx-action-icon">
+              !
+            </div>
+
+            <div className="fx-action-content">
+              <span className="fx-action-label">
+                ACTION NEEDED
+              </span>
+
+              <strong>
+                {stats.newOrders} new{" "}
+                {stats.newOrders === 1
+                  ? "order"
+                  : "orders"}
+              </strong>
+
+              <span>
+                {stats.requests} pending
+                customer{" "}
+                {stats.requests === 1
+                  ? "request"
+                  : "requests"}
+              </span>
+            </div>
+
+            <button
+              className="fx-arrow-button"
+              onClick={() =>
+                go(`/k/${slug}/orders`)
+              }
+              aria-label="View orders"
+            >
+              →
+            </button>
+
+            <button
+              className="fx-action-link"
+              onClick={() =>
+                go(`/k/${slug}/orders`)
+              }
+            >
+              View orders
+            </button>
+          </section>
+
+          {/* =====================================================
+              LIVE STATUS STATS
+          ====================================================== */}
+          <section className="fx-stat-grid">
+            <button
+              className="fx-stat-card fx-stat-blue"
+              onClick={() =>
+                go(
+                  `/k/${slug}/orders?status=NEW`,
+                )
+              }
+            >
+              <span>◫</span>
+
+              <small>
+                New orders
+              </small>
+
+              <strong>
+                {stats.newOrders}
+              </strong>
+            </button>
+
+            <button
+              className="fx-stat-card fx-stat-orange"
+              onClick={() =>
+                go(
+                  `/k/${slug}/orders?status=PREPARING`,
+                )
+              }
+            >
+              <span>♨</span>
+
+              <small>
+                Preparing
+              </small>
+
+              <strong>
+                {stats.preparing}
+              </strong>
+            </button>
+
+            <button
+              className="fx-stat-card fx-stat-green"
+              onClick={() =>
+                go(
+                  `/k/${slug}/orders?status=READY`,
+                )
+              }
+            >
+              <span>✓</span>
+
+              <small>
+                Ready
+              </small>
+
+              <strong>
+                {stats.ready}
+              </strong>
+            </button>
+
+            <button
+              className="fx-stat-card fx-stat-purple"
+              onClick={() =>
+                go(
+                  `/k/${slug}/requests`,
+                )
+              }
+            >
+              <span>♧</span>
+
+              <small>
+                Requests
+              </small>
+
+              <strong>
+                {stats.requests}
+              </strong>
+            </button>
+          </section>
+
+          {/* =====================================================
+              ORDER ANALYTICS
+          ====================================================== */}
+          <section className="fx-section-heading">
+            <div>
+              <p className="fx-kicker">
+                ORDER ANALYTICS
+              </p>
+
+              <h2>
+                Orders overview
+              </h2>
+            </div>
+          </section>
+
+          <section className="fx-stat-grid">
+            {/* TODAY */}
+            <div className="fx-stat-card fx-stat-blue">
+              <span>◷</span>
+
+              <small>
+                Orders today
+              </small>
+
+              <strong>
+                {orderCounts.today}
+              </strong>
+
+              <em>
+                Since midnight
+              </em>
+            </div>
+
+            {/* WEEK */}
+            <div className="fx-stat-card fx-stat-orange">
+              <span>▥</span>
+
+              <small>
+                Orders this week
+              </small>
+
+              <strong>
+                {orderCounts.week}
+              </strong>
+
+              <em>
+                Monday → today
+              </em>
+            </div>
+
+            {/* MONTH */}
+            <div className="fx-stat-card fx-stat-green">
+              <span>▦</span>
+
+              <small>
+                Orders this month
+              </small>
+
+              <strong>
+                {orderCounts.month}
+              </strong>
+
+              <em>
+                Current month
+              </em>
+            </div>
+
+            {/* OVERALL */}
+            <div className="fx-stat-card fx-stat-purple">
+              <span>∞</span>
+
+              <small>
+                Overall orders
+              </small>
+
+              <strong>
+                {orderCounts.overall}
+              </strong>
+
+              <em>
+                All time
+              </em>
+            </div>
+          </section>
+
+          {/* =====================================================
+              DASHBOARD GRID
+          ====================================================== */}
+          <div className="fx-dashboard-grid">
+            {/* ===================================================
+                PRIMARY COLUMN
+            ==================================================== */}
+            <div className="fx-primary-column">
+              <section className="fx-section-heading">
+                <div>
+                  <p className="fx-kicker">
+                    LIVE OPERATIONS
+                  </p>
+
+                  <h2>
+                    Recent orders
+                  </h2>
+                </div>
+
+                <button
+                  className="fx-text-button"
+                  onClick={() =>
+                    go(`/k/${slug}/orders`)
+                  }
+                >
+                  View all →
+                </button>
+              </section>
+
+              <section className="fx-order-list">
+                {orders.length === 0 ? (
+                  <div className="fx-empty-card">
+                    <div className="fx-empty-icon">
+                      ✓
+                    </div>
+
+                    <strong>
+                      All clear for now
+                    </strong>
+
+                    <p className="fx-muted">
+                      New customer orders will
+                      appear here.
+                    </p>
+                  </div>
+                ) : (
+                  orders
+                    .slice(0, 6)
+                    .map((order) => (
+                      <article
+                        className="fx-order-card"
+                        key={order.id}
+                      >
+                        <div className="fx-order-topline">
+                          <span
+                            className={`fx-status fx-status-${order.status.toLowerCase()}`}
+                          >
+                            {
+                              statusLabels[
+                                order.status
+                              ]
+                            }
+                          </span>
+
+                          <span className="fx-order-time">
+                            {formatTime(
+                              order.created_at,
+                            )}
+                          </span>
+                        </div>
+
+                        <div className="fx-order-mainline">
+                          <div>
+                            <h3>
+                              {order.tables
+                                ?.name ||
+                                "Table"}
+                            </h3>
+
+                            <p>
+                              {shortOrderId(
+                                order.id,
+                              )}{" "}
+                              ·{" "}
+                              {formatDate(
+                                order.created_at,
+                              )}
+                            </p>
+                          </div>
+
+                          <strong>
+                            ₹
+                            {Number(
+                              order.total || 0,
+                            ).toFixed(0)}
+                          </strong>
+                        </div>
+
+                        <ul className="fx-order-items">
+                          {(
+                            order.order_items ||
+                            []
+                          )
+                            .slice(0, 4)
+                            .map((item) => (
+                              <li
+                                key={item.id}
+                              >
+                                <span>
+                                  {
+                                    item.quantity
+                                  }{" "}
+                                  ×{" "}
+                                  {item.name}
+                                </span>
+
+                                <span>
+                                  ₹
+                                  {(
+                                    Number(
+                                      item.price,
+                                    ) *
+                                    item.quantity
+                                  ).toFixed(0)}
+                                </span>
+                              </li>
+                            ))}
+                        </ul>
+
+                        <div className="fx-order-actions">
+                          {/* NEW */}
+                          {order.status ===
+                            "NEW" && (
+                            <>
+                              <button
+                                className="fx-button fx-button-light"
+                                disabled={
+                                  busyOrder ===
+                                  order.id
+                                }
+                                onClick={() =>
+                                  updateOrderStatus(
+                                    order.id,
+                                    "CANCELLED",
+                                  )
+                                }
+                              >
+                                Reject
+                              </button>
+
+                              <button
+                                className="fx-button fx-button-dark"
+                                disabled={
+                                  busyOrder ===
+                                  order.id
+                                }
+                                onClick={() =>
+                                  updateOrderStatus(
+                                    order.id,
+                                    "PREPARING",
+                                  )
+                                }
+                              >
+                                Accept order
+                              </button>
+                            </>
+                          )}
+
+                          {/* PREPARING */}
+                          {order.status ===
+                            "PREPARING" && (
+                            <button
+                              className="fx-button fx-button-dark fx-button-full"
+                              disabled={
+                                busyOrder ===
+                                order.id
+                              }
+                              onClick={() =>
+                                updateOrderStatus(
+                                  order.id,
+                                  "READY",
+                                )
+                              }
+                            >
+                              Mark as ready →
+                            </button>
+                          )}
+
+                          {/* READY */}
+                          {order.status ===
+                            "READY" && (
+                            <button
+                              className="fx-button fx-button-dark fx-button-full"
+                              disabled={
+                                busyOrder ===
+                                order.id
+                              }
+                              onClick={() =>
+                                updateOrderStatus(
+                                  order.id,
+                                  "SERVED",
+                                )
+                              }
+                            >
+                              Mark as served ✓
+                            </button>
+                          )}
+                        </div>
+                      </article>
+                    ))
+                )}
+              </section>
+            </div>
+
+            {/* ===================================================
+                SECONDARY COLUMN
+            ==================================================== */}
+            <aside className="fx-secondary-column">
+              <section className="fx-section-heading">
+                <div>
+                  <p className="fx-kicker">
+                    CUSTOMER SUPPORT
+                  </p>
+
+                  <h2>
+                    Requests
+                  </h2>
+                </div>
+
+                <button
+                  className="fx-text-button"
+                  onClick={() =>
+                    go(
+                      `/k/${slug}/requests`,
+                    )
+                  }
+                >
+                  View all →
+                </button>
+              </section>
+
+              <section className="fx-request-list">
+                {requests.length === 0 ? (
+                  <div className="fx-empty-card fx-empty-card-small">
+                    <strong>
+                      No pending requests
+                    </strong>
+
+                    <p className="fx-muted">
+                      You are all caught up.
+                    </p>
+                  </div>
+                ) : (
+                  requests
+                    .slice(0, 5)
+                    .map((request) => (
+                      <article
+                        className="fx-request-card"
+                        key={request.id}
+                      >
+                        <div className="fx-request-icon">
+                          ♧
+                        </div>
+
+                        <div className="fx-request-content">
+                          <strong>
+                            {request.tables
+                              ?.name ||
+                              "Table"}
+                          </strong>
+
+                          <span>
+                            {
+                              requestLabels[
+                                request.type
+                              ]
+                            }
+                          </span>
+
+                          {request.message && (
+                            <small>
+                              {
+                                request.message
+                              }
+                            </small>
+                          )}
+                        </div>
+
+                        <div className="fx-request-actions">
+                          <span>
+                            {formatTime(
+                              request.created_at,
+                            )}
+                          </span>
+
+                          <button
+                            className="fx-button fx-button-dark"
+                            disabled={
+                              busyRequest ===
+                              request.id
+                            }
+                            onClick={() =>
+                              completeRequest(
+                                request.id,
+                              )
+                            }
+                          >
+                            Done
+                          </button>
+                        </div>
+                      </article>
+                    ))
+                )}
+              </section>
+
+              {/* =================================================
+                  SHIFT OVERVIEW
+              ================================================== */}
+              <section className="fx-overview-card">
+                <p className="fx-kicker">
+                  TODAY’S OVERVIEW
+                </p>
+
+                <h2>
+                  Stay on top of the shift
+                </h2>
+
+                <div className="fx-overview-metrics">
+                  <div>
+                    <strong>
+                      {orderCounts.today}
+                    </strong>
+
+                    <span>
+                      Orders today
+                    </span>
+                  </div>
+
+                  <div>
+                    <strong>
+                      {orders.length}
+                    </strong>
+
+                    <span>
+                      Open orders
+                    </span>
+                  </div>
+
+                  <div>
+                    <strong>
+                      {requests.length}
+                    </strong>
+
+                    <span>
+                      Open requests
+                    </span>
+                  </div>
+                </div>
+              </section>
+
+              {/* =================================================
+                  ORDER COUNT SUMMARY
+              ================================================== */}
+              <section className="fx-overview-card">
+                <p className="fx-kicker">
+                  BUSINESS OVERVIEW
+                </p>
+
+                <h2>
+                  Order activity
+                </h2>
+
+                <div className="fx-overview-metrics">
+                  <div>
+                    <strong>
+                      {orderCounts.week}
+                    </strong>
+
+                    <span>
+                      This week
+                    </span>
+                  </div>
+
+                  <div>
+                    <strong>
+                      {orderCounts.month}
+                    </strong>
+
+                    <span>
+                      This month
+                    </span>
+                  </div>
+
+                  <div>
+                    <strong>
+                      {orderCounts.overall}
+                    </strong>
+
+                    <span>
+                      All time
+                    </span>
+                  </div>
+                </div>
+              </section>
+            </aside>
+          </div>
+        </div>
+
+        {/* =======================================================
+            MOBILE BOTTOM NAV
+        ======================================================== */}
+        <nav
+          className="fx-bottom-nav"
+          aria-label="Kitchen navigation"
+        >
+          <button
+            className="active"
+            onClick={() =>
+              go(`/k/${slug}`)
+            }
+          >
+            <span>⌂</span>
+            Dashboard
+          </button>
+
+          <button
+            onClick={() =>
+              go(`/k/${slug}/orders`)
+            }
+          >
+            <span>▤</span>
+            Orders
+          </button>
+
+          <button
+            onClick={() =>
+              go(`/k/${slug}/requests`)
+            }
+          >
+            <span>♧</span>
+            Requests
+          </button>
+
+          <button
+            onClick={() =>
+              go(`/k/${slug}/manage`)
+            }
+          >
+            <span>▦</span>
+            Manage
+          </button>
+        </nav>
+      </div>
     </main>
   );
 }
