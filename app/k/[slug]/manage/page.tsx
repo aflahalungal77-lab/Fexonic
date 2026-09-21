@@ -45,7 +45,7 @@ type TableItem = {
   id: string;
   restaurant_id: string;
   name: string;
-  active?: boolean;
+  is_active?: boolean;
   created_at?: string;
 };
 
@@ -180,43 +180,45 @@ export default function ManagePage({
         setRestaurant(restaurantData);
 
         const [
-          menuResult,
-          categoryResult,
-          tableResult,
-        ] = await Promise.all([
-          supabase
-            .from("menu_items")
-            .select("*")
-            .eq(
-              "restaurant_id",
-              restaurantData.id
-            )
-            .order("created_at", {
-              ascending: false,
-            }),
+  menuResult,
+  categoryResult,
+  tableResult,
+] = await Promise.all([
+  supabase
+    .from("menu_items")
+    .select("*")
+    .eq(
+      "restaurant_id",
+      restaurantData.id
+    )
+    .order("created_at", {
+      ascending: false,
+    }),
 
-          supabase
-            .from("menu_categories")
-            .select("id,name")
-            .eq(
-              "restaurant_id",
-              restaurantData.id
-            )
-            .order("name", {
-              ascending: true,
-            }),
+  supabase
+    .from("menu_categories")
+    .select("id,name")
+    .eq(
+      "restaurant_id",
+      restaurantData.id
+    )
+    .order("name", {
+      ascending: true,
+    }),
 
-          supabase
-            .from("tables")
-            .select("*")
-            .eq(
-              "restaurant_id",
-              restaurantData.id
-            )
-            .order("created_at", {
-              ascending: true,
-            }),
-        ]);
+  supabase
+    .from("tables")
+    .select(
+      "id,restaurant_id,name,is_active,sort_order,created_at"
+    )
+    .eq(
+      "restaurant_id",
+      restaurantData.id
+    )
+    .order("created_at", {
+      ascending: true,
+    }),
+]);
 
         if (menuResult.error) {
           throw menuResult.error;
@@ -509,57 +511,55 @@ export default function ManagePage({
     setTableName("");
   }
 
-  async function addTable() {
-    if (!restaurant) return;
+async function addTable() {
+  if (!restaurant) return;
 
-    const name =
-      tableName.trim();
+  const name = tableName.trim();
 
-    if (!name) {
-      window.alert(
-        "Please enter a table name."
-      );
-      return;
-    }
-
-    setTableSaving(true);
-
-    try {
-      const supabase =
-        supabaseBrowser();
-
-      const {
-        error,
-      } = await supabase
-        .from("tables")
-        .insert({
-          restaurant_id:
-            restaurant.id,
-          name,
-          active: true,
-        });
-
-      if (error) {
-        throw error;
-      }
-
-      closeTableModal();
-
-      await loadData();
-    } catch (error: any) {
-      console.error(
-        "Table add error:",
-        error
-      );
-
-      window.alert(
-        error?.message ||
-          "Could not add table."
-      );
-    } finally {
-      setTableSaving(false);
-    }
+  if (!name) {
+    window.alert(
+      "Please enter a table name."
+    );
+    return;
   }
+
+  setTableSaving(true);
+
+  try {
+    const supabase =
+      supabaseBrowser();
+
+    const {
+      error,
+    } = await supabase
+      .from("tables")
+      .insert({
+        restaurant_id: restaurant.id,
+        name,
+        is_active: true,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    closeTableModal();
+
+    await loadData();
+  } catch (error: any) {
+    console.error(
+      "Table add error:",
+      error
+    );
+
+    window.alert(
+      error?.message ||
+        "Could not add table."
+    );
+  } finally {
+    setTableSaving(false);
+  }
+}
 
   async function deleteTable(
     table: TableItem
