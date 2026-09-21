@@ -1,388 +1,1793 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { useRouter } from "next/navigation";
+
 import KitchenShell from "@/components/KitchenShell";
 import QR from "@/components/QR";
 import { supabaseBrowser } from "@/lib/supabase";
+
+type ManageTab = "menu" | "tables";
+
+type Restaurant = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+type Category = {
+  id: string;
+  name: string;
+};
+
+type MenuItem = {
+  id: string;
+  restaurant_id: string;
+  category_id: string | null;
+  name: string;
+  price: number | string;
+  image:
+    | {
+        path?: string;
+        url?: string;
+        alt?: string;
+      }
+    | null;
+  created_at?: string;
+};
+
+type TableItem = {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  active?: boolean;
+  created_at?: string;
+};
+
+function money(value: number | string) {
+  return `₹${Number(value || 0).toFixed(0)}`;
+}
 
 export default function ManagePage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  const router = useRouter();
+
   const [slug, setSlug] = useState("");
-  const [restaurant, setRestaurant] = useState<any>(null);
-  const [items, setItems] = useState<any[]>([]);
-  const [tables, setTables] = useState<any[]>([]);
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [tableName, setTableName] = useState("");
-  const [savingItem, setSavingItem] = useState(false);
-  const [savingTable, setSavingTable] = useState(false);
-  const [search, setSearch] = useState("");
+
+  const [restaurant, setRestaurant] =
+    useState<Restaurant | null>(null);
+
+  const [activeTab, setActiveTab] =
+    useState<ManageTab>("menu");
+
+  const [menuItems, setMenuItems] =
+    useState<MenuItem[]>([]);
+
+  const [categories, setCategories] =
+    useState<Category[]>([]);
+
+  const [tables, setTables] =
+    useState<TableItem[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [refreshing, setRefreshing] =
+    useState(false);
+
+  const [search, setSearch] =
+    useState("");
+
+  const [selectedCategory, setSelectedCategory] =
+    useState("ALL");
+
+  /* =========================
+     MENU MODAL
+     ========================= */
+
+  const [menuModal, setMenuModal] =
+    useState(false);
+
+  const [editingItem, setEditingItem] =
+    useState<MenuItem | null>(null);
+
+  const [menuName, setMenuName] =
+    useState("");
+
+  const [menuPrice, setMenuPrice] =
+    useState("");
+
+  const [menuCategory, setMenuCategory] =
+    useState("");
+
+  const [menuImage, setMenuImage] =
+    useState<File | null>(null);
+
+  const [menuSaving, setMenuSaving] =
+    useState(false);
+
+  /* =========================
+     TABLE MODAL
+     ========================= */
+
+  const [tableModal, setTableModal] =
+    useState(false);
+
+  const [tableName, setTableName] =
+    useState("");
+
+  const [tableSaving, setTableSaving] =
+    useState(false);
+
+  const [busyTable, setBusyTable] =
+    useState<string | null>(null);
+
+  /* =========================
+     QR MODAL
+     ========================= */
+
+  const [selectedTable, setSelectedTable] =
+    useState<TableItem | null>(null);
+
+  const [qrModal, setQrModal] =
+    useState(false);
 
   useEffect(() => {
-    params.then(({ slug: currentSlug }) => setSlug(currentSlug));
+    params.then((value) => {
+      setSlug(value.slug);
+    });
   }, [params]);
 
-  async function load(currentSlug = slug) {
-    if (!currentSlug) return;
+  /* =========================
+     LOAD EVERYTHING
+     ========================= */
 
-    const s = supabaseBrowser();
-    const { data: r } = await s
-      .from("restaurants")
-      .select("id,name,slug")
-      .eq("slug", currentSlug)
-      .single();
+  const loadData = useCallback(
+    async () => {
+      if (!slug) return;
 
-    if (!r) return;
-    setRestaurant(r);
+      setRefreshing(true);
 
-    const [{ data: menu }, { data: tableRows }] = await Promise.all([
-      s
-        .from("menu_items")
-        .select("*")
-        .eq("restaurant_id", r.id)
-        .order("created_at", { ascending: false }),
-      s
-        .from("tables")
-        .select("*")
-        .eq("restaurant_id", r.id)
-        .order("sort_order", { ascending: true }),
-    ]);
+      try {
+        const supabase =
+          supabaseBrowser();
 
-    setItems(menu || []);
-    setTables(tableRows || []);
-  }
+        const {
+          data: restaurantData,
+          error: restaurantError,
+        } = await supabase
+          .from("restaurants")
+          .select("id,name,slug")
+          .eq("slug", slug)
+          .single();
+
+        if (
+          restaurantError ||
+          !restaurantData
+        ) {
+          router.replace("/kitchen");
+          return;
+        }
+
+        setRestaurant(restaurantData);
+
+        const [
+          menuResult,
+          categoryResult,
+          tableResult,
+        ] = await Promise.all([
+          supabase
+            .from("menu_items")
+            .select("*")
+            .eq(
+              "restaurant_id",
+              restaurantData.id
+            )
+            .order("created_at", {
+              ascending: false,
+            }),
+
+          supabase
+            .from("menu_categories")
+            .select("id,name")
+            .eq(
+              "restaurant_id",
+              restaurantData.id
+            )
+            .order("name", {
+              ascending: true,
+            }),
+
+          supabase
+            .from("tables")
+            .select("*")
+            .eq(
+              "restaurant_id",
+              restaurantData.id
+            )
+            .order("created_at", {
+              ascending: true,
+            }),
+        ]);
+
+        if (menuResult.error) {
+          throw menuResult.error;
+        }
+
+        if (categoryResult.error) {
+          throw categoryResult.error;
+        }
+
+        if (tableResult.error) {
+          throw tableResult.error;
+        }
+
+        setMenuItems(
+          menuResult.data || []
+        );
+
+        setCategories(
+          categoryResult.data || []
+        );
+
+        setTables(
+          tableResult.data || []
+        );
+      } catch (error) {
+        console.error(
+          "Manage page loading error:",
+          error
+        );
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [router, slug]
+  );
 
   useEffect(() => {
-    load(slug);
-  }, [slug]);
+    loadData();
+  }, [loadData]);
 
-  async function addItem(event: React.FormEvent) {
-    event.preventDefault();
-    if (!restaurant || !name.trim() || !price) return;
+  /* =========================
+     MENU
+     ========================= */
 
-    setSavingItem(true);
+  function resetMenuForm() {
+    setEditingItem(null);
+    setMenuName("");
+    setMenuPrice("");
+    setMenuCategory("");
+    setMenuImage(null);
+  }
+
+  function openAddMenu() {
+    resetMenuForm();
+    setMenuModal(true);
+  }
+
+  function openEditMenu(
+    item: MenuItem
+  ) {
+    setEditingItem(item);
+    setMenuName(item.name);
+    setMenuPrice(String(item.price));
+    setMenuCategory(
+      item.category_id || ""
+    );
+    setMenuImage(null);
+    setMenuModal(true);
+  }
+
+  function closeMenuModal() {
+    if (menuSaving) return;
+
+    setMenuModal(false);
+    resetMenuForm();
+  }
+
+  async function uploadFoodImage(
+    file: File
+  ) {
+    if (!restaurant) {
+      throw new Error(
+        "Restaurant not found"
+      );
+    }
+
+    const supabase =
+      supabaseBrowser();
+
+    const extension =
+      file.name.split(".").pop() ||
+      "jpg";
+
+    const path =
+      `${restaurant.id}/${crypto.randomUUID()}.${extension}`;
+
+    const {
+      error,
+    } = await supabase.storage
+      .from("food-images")
+      .upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    const {
+      data,
+    } = supabase.storage
+      .from("food-images")
+      .getPublicUrl(path);
+
+    return {
+      path,
+      url: data.publicUrl,
+      alt: menuName.trim(),
+    };
+  }
+
+  async function saveMenuItem() {
+    if (!restaurant) return;
+
+    const name =
+      menuName.trim();
+
+    const price =
+      Number(menuPrice);
+
+    if (!name) {
+      window.alert(
+        "Please enter the food name."
+      );
+      return;
+    }
+
+    if (
+      !Number.isFinite(price) ||
+      price < 0
+    ) {
+      window.alert(
+        "Please enter a valid price."
+      );
+      return;
+    }
+
+    setMenuSaving(true);
 
     try {
-      let image: any = null;
+      const supabase =
+        supabaseBrowser();
 
-      if (file) {
-        const extension = file.name.split(".").pop() || "jpg";
-        const path = `${restaurant.id}/${crypto.randomUUID()}.${extension}`;
+      let image =
+        editingItem?.image || null;
 
-        const upload = await supabaseBrowser()
-          .storage
-          .from("food-images")
-          .upload(path, file, {
-            upsert: false,
-            contentType: file.type,
-          });
-
-        if (upload.error) throw upload.error;
-
-        const { data } = supabaseBrowser()
-          .storage
-          .from("food-images")
-          .getPublicUrl(path);
-
-        image = {
-          path,
-          url: data.publicUrl,
-          alt: name.trim(),
-        };
+      if (menuImage) {
+        image =
+          await uploadFoodImage(
+            menuImage
+          );
       }
 
-      const { error } = await supabaseBrowser()
-        .from("menu_items")
-        .insert({
-          restaurant_id: restaurant.id,
-          name: name.trim(),
-          price: Number(price),
-          image,
-        });
+      if (editingItem) {
+        const {
+          error,
+        } = await supabase
+          .from("menu_items")
+          .update({
+            name,
+            price,
+            category_id:
+              menuCategory || null,
+            ...(image
+              ? { image }
+              : {}),
+          })
+          .eq(
+            "id",
+            editingItem.id
+          )
+          .eq(
+            "restaurant_id",
+            restaurant.id
+          );
 
-      if (error) throw error;
+        if (error) {
+          throw error;
+        }
+      } else {
+        const {
+          error,
+        } = await supabase
+          .from("menu_items")
+          .insert({
+            restaurant_id:
+              restaurant.id,
+            name,
+            price,
+            category_id:
+              menuCategory || null,
+            image,
+          });
 
-      setName("");
-      setPrice("");
-      setFile(null);
-      await load();
+        if (error) {
+          throw error;
+        }
+      }
+
+      setMenuModal(false);
+      resetMenuForm();
+
+      await loadData();
     } catch (error: any) {
-      window.alert(error?.message || "Could not add menu item");
+      console.error(
+        "Menu save error:",
+        error
+      );
+
+      window.alert(
+        error?.message ||
+          "Could not save menu item."
+      );
     } finally {
-      setSavingItem(false);
+      setMenuSaving(false);
     }
   }
 
-  async function deleteItem(id: string) {
-    if (!window.confirm("Delete this menu item?")) return;
+  async function deleteMenuItem(
+    item: MenuItem
+  ) {
+    const ok =
+      window.confirm(
+        `Delete "${item.name}"?`
+      );
 
-    const { error } = await supabaseBrowser()
-      .from("menu_items")
-      .delete()
-      .eq("id", id)
-      .eq("restaurant_id", restaurant.id);
-
-    if (error) window.alert(error.message);
-    await load();
-  }
-
-  async function addTable(event: React.FormEvent) {
-    event.preventDefault();
-    if (!restaurant || !tableName.trim()) return;
-
-    setSavingTable(true);
+    if (!ok) return;
 
     try {
-      const { error } = await supabaseBrowser()
-        .from("tables")
-        .insert({
-          restaurant_id: restaurant.id,
-          name: tableName.trim(),
-        });
+      const supabase =
+        supabaseBrowser();
 
-      if (error) throw error;
+      const {
+        error,
+      } = await supabase
+        .from("menu_items")
+        .delete()
+        .eq(
+          "id",
+          item.id
+        )
+        .eq(
+          "restaurant_id",
+          restaurant!.id
+        );
 
-      setTableName("");
-      await load();
+      if (error) {
+        throw error;
+      }
+
+      await loadData();
     } catch (error: any) {
-      window.alert(error?.message || "Could not add table");
-    } finally {
-      setSavingTable(false);
+      console.error(
+        "Menu delete error:",
+        error
+      );
+
+      window.alert(
+        error?.message ||
+          "Could not delete item."
+      );
     }
   }
 
-  async function deleteTable(id: string) {
-    if (!window.confirm("Delete this table and its QR?")) return;
+  /* =========================
+     TABLES
+     ========================= */
 
-    const { error } = await supabaseBrowser()
-      .from("tables")
-      .delete()
-      .eq("id", id)
-      .eq("restaurant_id", restaurant.id);
-
-    if (error) window.alert(error.message);
-    await load();
+  function openAddTable() {
+    setTableName("");
+    setTableModal(true);
   }
 
-  const filteredItems = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return items;
-    return items.filter((item) => item.name.toLowerCase().includes(query));
-  }, [items, search]);
+  function closeTableModal() {
+    if (tableSaving) return;
 
-  if (!restaurant) {
+    setTableModal(false);
+    setTableName("");
+  }
+
+  async function addTable() {
+    if (!restaurant) return;
+
+    const name =
+      tableName.trim();
+
+    if (!name) {
+      window.alert(
+        "Please enter a table name."
+      );
+      return;
+    }
+
+    setTableSaving(true);
+
+    try {
+      const supabase =
+        supabaseBrowser();
+
+      const {
+        error,
+      } = await supabase
+        .from("tables")
+        .insert({
+          restaurant_id:
+            restaurant.id,
+          name,
+          active: true,
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      closeTableModal();
+
+      await loadData();
+    } catch (error: any) {
+      console.error(
+        "Table add error:",
+        error
+      );
+
+      window.alert(
+        error?.message ||
+          "Could not add table."
+      );
+    } finally {
+      setTableSaving(false);
+    }
+  }
+
+  async function deleteTable(
+    table: TableItem
+  ) {
+    const ok =
+      window.confirm(
+        `Delete "${table.name}"?`
+      );
+
+    if (!ok) return;
+
+    setBusyTable(table.id);
+
+    try {
+      const supabase =
+        supabaseBrowser();
+
+      const {
+        error,
+      } = await supabase
+        .from("tables")
+        .delete()
+        .eq(
+          "id",
+          table.id
+        )
+        .eq(
+          "restaurant_id",
+          restaurant!.id
+        );
+
+      if (error) {
+        throw error;
+      }
+
+      await loadData();
+    } catch (error: any) {
+      console.error(
+        "Table delete error:",
+        error
+      );
+
+      window.alert(
+        error?.message ||
+          "Could not delete table."
+      );
+    } finally {
+      setBusyTable(null);
+    }
+  }
+
+  /* =========================
+     CUSTOMER URL
+     ========================= */
+
+  function customerUrl(
+    table: TableItem
+  ) {
+    if (typeof window === "undefined") {
+      return "";
+    }
+
+    return `${window.location.origin}/r/${restaurant?.slug}/t/${table.id}`;
+  }
+
+  async function copyCustomerUrl(
+    table: TableItem
+  ) {
+    const url =
+      customerUrl(table);
+
+    if (!url) return;
+
+    try {
+      await navigator.clipboard.writeText(
+        url
+      );
+
+      window.alert(
+        "Customer link copied."
+      );
+    } catch {
+      window.prompt(
+        "Copy this customer link:",
+        url
+      );
+    }
+  }
+
+  function openCustomerMenu(
+    table: TableItem
+  ) {
+    const url =
+      customerUrl(table);
+
+    if (!url) return;
+
+    window.open(
+      url,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }
+
+  function openQr(
+    table: TableItem
+  ) {
+    setSelectedTable(table);
+    setQrModal(true);
+  }
+
+  function closeQr() {
+    setQrModal(false);
+    setSelectedTable(null);
+  }
+
+  /* =========================
+     FILTERED MENU
+     ========================= */
+
+  const filteredItems =
+    useMemo(() => {
+      const query =
+        search
+          .trim()
+          .toLowerCase();
+
+      return menuItems.filter(
+        (item) => {
+          const matchesSearch =
+            !query ||
+            item.name
+              .toLowerCase()
+              .includes(query);
+
+          const matchesCategory =
+            selectedCategory ===
+              "ALL" ||
+            item.category_id ===
+              selectedCategory;
+
+          return (
+            matchesSearch &&
+            matchesCategory
+          );
+        }
+      );
+    }, [
+      menuItems,
+      search,
+      selectedCategory,
+    ]);
+
+  const totalMenu =
+    menuItems.length;
+
+  const totalTables =
+    tables.length;
+
+  /* =========================
+     LOADING
+     ========================= */
+
+  if (loading && !restaurant) {
     return (
       <main className="fx-app">
-        <div className="fx-loading-screen">
-          <div className="fx-loading-card">
-            <div className="fx-logo-mark">F</div>
-            <strong>Loading workspace</strong>
-            <p>Preparing menu and table management…</p>
+        <div className="mt-loading">
+          <div className="mt-loading-logo">
+            F
           </div>
+
+          <strong>
+            Fexonic
+          </strong>
+
+          <span>
+            Loading workspace...
+          </span>
         </div>
       </main>
     );
   }
 
+  if (!restaurant) {
+    return null;
+  }
+
   return (
-    <KitchenShell slug={slug} restaurant={restaurant} active="manage">
-      <section className="fx-welcome-row">
-        <div>
-          <p className="fx-kicker">MANAGEMENT</p>
-          <h1>Menu & Tables<span>.</span></h1>
-          <p className="fx-muted">
-            Manage your menu, dining tables and QR ordering in one place.
-          </p>
-        </div>
-      </section>
+    <KitchenShell
+      slug={slug}
+      restaurant={restaurant}
+      active="manage"
+      newOrders={0}
+      requests={0}
+    >
+      <div className="mt-page">
 
-      <section className="fx-manage-hero">
-        <div>
-          <span className="fx-manage-hero-label">WORKSPACE</span>
-          <strong>{restaurant.name}</strong>
-          <p>Every table gets its own customer ordering link.</p>
-        </div>
-        <div className="fx-manage-hero-stats">
-          <span><b>{items.length}</b> menu items</span>
-          <span><b>{tables.length}</b> tables</span>
-        </div>
-      </section>
+        {/* ==================================================
+            PAGE HEADER
+            ================================================== */}
 
-      <div className="fx-manage-grid">
-        <section className="fx-manage-panel">
-          <div className="fx-panel-header">
-            <div>
-              <p className="fx-kicker">MENU</p>
-              <h2>Your menu</h2>
-            </div>
-            <span className="fx-panel-count">{items.length}</span>
+        <section className="mt-header">
+          <div>
+            <p className="mt-eyebrow">
+              RESTAURANT MANAGEMENT
+            </p>
+
+            <h1>
+              Manage
+            </h1>
+
+            <p className="mt-subtitle">
+              Manage your menu, tables and
+              customer QR ordering.
+            </p>
           </div>
 
-          <form className="fx-add-form" onSubmit={addItem}>
-            <div className="fx-form-row">
-              <input
-                className="fx-modern-input"
-                placeholder="Food name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-              <input
-                className="fx-modern-input fx-price-input"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="₹ Price"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                required
-              />
+          <button
+            type="button"
+            className="mt-refresh"
+            onClick={loadData}
+            disabled={refreshing}
+          >
+            <span
+              className={
+                refreshing
+                  ? "mt-refresh-spin"
+                  : ""
+              }
+            >
+              ↻
+            </span>
+
+            {refreshing
+              ? "Refreshing"
+              : "Refresh"}
+          </button>
+        </section>
+
+        {/* ==================================================
+            TWO MAIN BUTTONS
+            ================================================== */}
+
+        <section className="mt-tabs">
+
+          <button
+            type="button"
+            className={
+              activeTab === "menu"
+                ? "mt-tab active"
+                : "mt-tab"
+            }
+            onClick={() =>
+              setActiveTab("menu")
+            }
+          >
+            <span className="mt-tab-icon">
+              ▦
+            </span>
+
+            <span className="mt-tab-text">
+              <strong>
+                Menu
+              </strong>
+
+              <small>
+                Food items & prices
+              </small>
+            </span>
+
+            <b>
+              {totalMenu}
+            </b>
+          </button>
+
+          <button
+            type="button"
+            className={
+              activeTab === "tables"
+                ? "mt-tab active"
+                : "mt-tab"
+            }
+            onClick={() =>
+              setActiveTab("tables")
+            }
+          >
+            <span className="mt-tab-icon">
+              QR
+            </span>
+
+            <span className="mt-tab-text">
+              <strong>
+                QR & Tables
+              </strong>
+
+              <small>
+                Tables & customer QR
+              </small>
+            </span>
+
+            <b>
+              {totalTables}
+            </b>
+          </button>
+
+        </section>
+
+        {/* ==================================================
+            MENU VIEW
+            ================================================== */}
+
+        {activeTab === "menu" && (
+          <section className="mt-view">
+
+            <div className="mt-view-header">
+              <div>
+                <p className="mt-eyebrow">
+                  MENU
+                </p>
+
+                <h2>
+                  Food items
+                </h2>
+
+                <span>
+                  Add and manage the food
+                  shown to customers.
+                </span>
+              </div>
+
+              <button
+                type="button"
+                className="mt-primary"
+                onClick={openAddMenu}
+              >
+                <span>
+                  +
+                </span>
+
+                Add item
+              </button>
             </div>
 
-            <div className="fx-form-row fx-form-row-bottom">
-              <label className="fx-file-input">
-                <span>{file ? file.name : "Choose food image"}</span>
+            {/* SEARCH */}
+
+            <div className="mt-menu-toolbar">
+
+              <div className="mt-search">
+                <span>
+                  ⌕
+                </span>
+
                 <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  value={search}
+                  onChange={(event) =>
+                    setSearch(
+                      event.target.value
+                    )
+                  }
+                  placeholder="Search food..."
+                />
+
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSearch("")
+                    }
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+
+              <div className="mt-categories">
+
+                <button
+                  type="button"
+                  className={
+                    selectedCategory ===
+                    "ALL"
+                      ? "mt-category active"
+                      : "mt-category"
+                  }
+                  onClick={() =>
+                    setSelectedCategory(
+                      "ALL"
+                    )
+                  }
+                >
+                  All
+                  <b>
+                    {menuItems.length}
+                  </b>
+                </button>
+
+                {categories.map(
+                  (category) => {
+                    const count =
+                      menuItems.filter(
+                        (item) =>
+                          item.category_id ===
+                          category.id
+                      ).length;
+
+                    return (
+                      <button
+                        key={category.id}
+                        type="button"
+                        className={
+                          selectedCategory ===
+                          category.id
+                            ? "mt-category active"
+                            : "mt-category"
+                        }
+                        onClick={() =>
+                          setSelectedCategory(
+                            category.id
+                          )
+                        }
+                      >
+                        {category.name}
+
+                        <b>
+                          {count}
+                        </b>
+                      </button>
+                    );
+                  }
+                )}
+
+              </div>
+            </div>
+
+            {/* FOOD GRID */}
+
+            {filteredItems.length ===
+            0 ? (
+              <div className="mt-empty">
+                <div className="mt-empty-icon">
+                  ▦
+                </div>
+
+                <h3>
+                  {search
+                    ? "No food found"
+                    : "Your menu is empty"}
+                </h3>
+
+                <p>
+                  {search
+                    ? "Try another search."
+                    : "Add your first food item."}
+                </p>
+
+                {!search && (
+                  <button
+                    type="button"
+                    onClick={
+                      openAddMenu
+                    }
+                  >
+                    Add menu item
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="mt-food-grid">
+
+                {filteredItems.map(
+                  (item) => (
+                    <article
+                      key={item.id}
+                      className="mt-food-card"
+                    >
+
+                      <div className="mt-food-image">
+
+                        {item.image?.url ? (
+                          <img
+                            src={
+                              item.image
+                                .url
+                            }
+                            alt={
+                              item.image
+                                .alt ||
+                              item.name
+                            }
+                          />
+                        ) : (
+                          <div className="mt-no-image">
+                            <span>
+                              ♨
+                            </span>
+
+                            <small>
+                              No image
+                            </small>
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          className="mt-image-edit"
+                          onClick={() =>
+                            openEditMenu(
+                              item
+                            )
+                          }
+                        >
+                          ✎
+                        </button>
+
+                      </div>
+
+                      <div className="mt-food-body">
+
+                        <div className="mt-food-top">
+
+                          <div>
+                            <h3>
+                              {item.name}
+                            </h3>
+
+                            <span>
+                              {categories.find(
+                                (
+                                  category
+                                ) =>
+                                  category.id ===
+                                  item.category_id
+                              )?.name ||
+                                "Food item"}
+                            </span>
+                          </div>
+
+                          <strong>
+                            {money(
+                              item.price
+                            )}
+                          </strong>
+
+                        </div>
+
+                        <div className="mt-food-actions">
+
+                          <button
+                            type="button"
+                            className="mt-edit-button"
+                            onClick={() =>
+                              openEditMenu(
+                                item
+                              )
+                            }
+                          >
+                            Edit
+                          </button>
+
+                          <button
+                            type="button"
+                            className="mt-delete-button"
+                            onClick={() =>
+                              deleteMenuItem(
+                                item
+                              )
+                            }
+                          >
+                            Delete
+                          </button>
+
+                        </div>
+
+                      </div>
+                    </article>
+                  )
+                )}
+
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ==================================================
+            TABLES / QR VIEW
+            ================================================== */}
+
+        {activeTab === "tables" && (
+          <section className="mt-view">
+
+            <div className="mt-view-header">
+              <div>
+                <p className="mt-eyebrow">
+                  QR & TABLES
+                </p>
+
+                <h2>
+                  Tables
+                </h2>
+
+                <span>
+                  Create tables and generate
+                  customer ordering QR codes.
+                </span>
+              </div>
+
+              <button
+                type="button"
+                className="mt-primary"
+                onClick={openAddTable}
+              >
+                <span>
+                  +
+                </span>
+
+                Add table
+              </button>
+            </div>
+
+            {/* TABLE INFO */}
+
+            <div className="mt-table-info">
+              <div>
+                <span>
+                  Total tables
+                </span>
+
+                <strong>
+                  {tables.length}
+                </strong>
+              </div>
+
+              <p>
+                Each table gets its own
+                customer menu link and QR
+                code.
+              </p>
+            </div>
+
+            {/* TABLE GRID */}
+
+            {tables.length === 0 ? (
+              <div className="mt-empty">
+                <div className="mt-empty-icon">
+                  QR
+                </div>
+
+                <h3>
+                  No tables yet
+                </h3>
+
+                <p>
+                  Add your first restaurant
+                  table.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={
+                    openAddTable
+                  }
+                >
+                  Add table
+                </button>
+              </div>
+            ) : (
+              <div className="mt-table-grid">
+
+                {tables.map(
+                  (table) => (
+                    <article
+                      key={table.id}
+                      className="mt-table-card"
+                    >
+
+                      <div className="mt-table-top">
+
+                        <div className="mt-table-number">
+                          {table.name
+                            .slice(0, 1)
+                            .toUpperCase()}
+                        </div>
+
+                        <div>
+                          <span>
+                            TABLE
+                          </span>
+
+                          <h3>
+                            {table.name}
+                          </h3>
+                        </div>
+
+                      </div>
+
+                      <div className="mt-qr-preview">
+
+<QR
+  value={customerUrl(table)}
+/>
+
+                      </div>
+
+                      <div className="mt-table-actions">
+
+                        <button
+                          type="button"
+                          className="mt-qr-button"
+                          onClick={() =>
+                            openQr(
+                              table
+                            )
+                          }
+                        >
+                          View QR
+                        </button>
+
+                        <button
+                          type="button"
+                          className="mt-open-button"
+                          onClick={() =>
+                            openCustomerMenu(
+                              table
+                            )
+                          }
+                        >
+                          Open menu
+                        </button>
+
+                        <button
+                          type="button"
+                          className="mt-copy-button"
+                          onClick={() =>
+                            copyCustomerUrl(
+                              table
+                            )
+                          }
+                        >
+                          Copy link
+                        </button>
+
+                        <button
+                          type="button"
+                          className="mt-table-delete"
+                          disabled={
+                            busyTable ===
+                            table.id
+                          }
+                          onClick={() =>
+                            deleteTable(
+                              table
+                            )
+                          }
+                        >
+                          {busyTable ===
+                          table.id
+                            ? "..."
+                            : "Delete table"}
+                        </button>
+
+                      </div>
+
+                    </article>
+                  )
+                )}
+
+              </div>
+            )}
+          </section>
+        )}
+
+      </div>
+
+      {/* ====================================================
+          ADD / EDIT MENU MODAL
+          ==================================================== */}
+
+      {menuModal && (
+        <div
+          className="mt-modal-overlay"
+          onClick={
+            closeMenuModal
+          }
+        >
+          <div
+            className="mt-modal"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+
+            <div className="mt-modal-handle" />
+
+            <div className="mt-modal-header">
+
+              <div>
+                <p className="mt-eyebrow">
+                  MENU
+                </p>
+
+                <h2>
+                  {editingItem
+                    ? "Edit food"
+                    : "Add food"}
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                className="mt-close"
+                onClick={
+                  closeMenuModal
+                }
+              >
+                ×
+              </button>
+
+            </div>
+
+            <div className="mt-form">
+
+              <label>
+                <span>
+                  Food name
+                </span>
+
+                <input
+                  value={menuName}
+                  onChange={(event) =>
+                    setMenuName(
+                      event.target.value
+                    )
+                  }
+                  placeholder="Chicken Biriyani"
                 />
               </label>
 
-              <button
-                className="fx-button fx-button-dark"
-                type="submit"
-                disabled={savingItem}
-              >
-                {savingItem ? "Adding…" : "+ Add item"}
-              </button>
-            </div>
-          </form>
+              <div className="mt-form-row">
 
-          <div className="fx-search-row">
-            <input
-              className="fx-modern-input"
-              placeholder="Search menu…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+                <label>
+                  <span>
+                    Price
+                  </span>
 
-          <div className="fx-menu-grid">
-            {filteredItems.length === 0 ? (
-              <div className="fx-empty-card">
-                <strong>No menu items</strong>
-                <p className="fx-muted">Add your first food item above.</p>
-              </div>
-            ) : (
-              filteredItems.map((item) => (
-                <article className="fx-menu-card" key={item.id}>
-                  <div className="fx-menu-image">
-                    {item.image?.url ? (
-                      <img src={item.image.url} alt={item.image.alt || item.name} loading="lazy" />
-                    ) : (
-                      <span>FOOD</span>
+                  <div className="mt-price-input">
+                    <b>
+                      ₹
+                    </b>
+
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={menuPrice}
+                      onChange={(event) =>
+                        setMenuPrice(
+                          event.target.value
+                        )
+                      }
+                      placeholder="250"
+                    />
+                  </div>
+                </label>
+
+                <label>
+                  <span>
+                    Category
+                  </span>
+
+                  <select
+                    value={
+                      menuCategory
+                    }
+                    onChange={(event) =>
+                      setMenuCategory(
+                        event.target.value
+                      )
+                    }
+                  >
+                    <option value="">
+                      No category
+                    </option>
+
+                    {categories.map(
+                      (category) => (
+                        <option
+                          key={
+                            category.id
+                          }
+                          value={
+                            category.id
+                          }
+                        >
+                          {
+                            category.name
+                          }
+                        </option>
+                      )
                     )}
-                  </div>
-                  <div className="fx-menu-info">
-                    <div>
-                      <h3>{item.name}</h3>
-                      <strong>₹{Number(item.price).toFixed(0)}</strong>
-                    </div>
-                    <button
-                      className="fx-menu-delete"
-                      onClick={() => deleteItem(item.id)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </article>
-              ))
-            )}
-          </div>
-        </section>
+                  </select>
+                </label>
 
-        <section className="fx-manage-panel">
-          <div className="fx-panel-header">
-            <div>
-              <p className="fx-kicker">TABLES & QR</p>
-              <h2>Your tables</h2>
-            </div>
-            <span className="fx-panel-count">{tables.length}</span>
-          </div>
-
-          <form className="fx-add-form" onSubmit={addTable}>
-            <div className="fx-form-row">
-              <input
-                className="fx-modern-input"
-                placeholder="Table name, e.g. Table 1"
-                value={tableName}
-                onChange={(e) => setTableName(e.target.value)}
-                required
-              />
-              <button
-                className="fx-button fx-button-dark"
-                type="submit"
-                disabled={savingTable}
-              >
-                {savingTable ? "Adding…" : "+ Add table"}
-              </button>
-            </div>
-          </form>
-
-          <div className="fx-table-grid">
-            {tables.length === 0 ? (
-              <div className="fx-empty-card">
-                <strong>No tables yet</strong>
-                <p className="fx-muted">Add your first table to generate a QR.</p>
               </div>
-            ) : (
-              tables.map((table) => {
-                const url =
-                  typeof window !== "undefined"
-                    ? `${window.location.origin}/r/${restaurant.slug}/t/${table.id}`
-                    : `/r/${restaurant.slug}/t/${table.id}`;
 
-                return (
-                  <article className="fx-table-card" key={table.id}>
-                    <div className="fx-table-top">
-                      <div>
-                        <span className="fx-table-number">{table.name}</span>
-                        <small>Customer ordering QR</small>
-                      </div>
-                      <button
-                        className="fx-menu-delete"
-                        onClick={() => deleteTable(table.id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
+              <label>
+                <span>
+                  Food image
+                </span>
 
-                    <div className="fx-qr-frame">
-                      <QR value={url} />
-                    </div>
+                <div className="mt-file-box">
 
-                    <div className="fx-table-actions">
-                      <a
-                        className="fx-button fx-button-light"
-                        href={url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Open customer menu
-                      </a>
-                    </div>
-                  </article>
-                );
-              })
-            )}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(event) =>
+                      setMenuImage(
+                        event.target
+                          .files?.[0] ||
+                        null
+                      )
+                    }
+                  />
+
+                  <div>
+                    <strong>
+                      {menuImage
+                        ? menuImage.name
+                        : editingItem?.image
+                            ?.url
+                        ? "Current image"
+                        : "Choose food image"}
+                    </strong>
+
+                    <small>
+                      PNG, JPG or WEBP
+                    </small>
+                  </div>
+
+                  <span>
+                    +
+                  </span>
+
+                </div>
+              </label>
+
+              <div className="mt-preview">
+
+                {menuImage ? (
+                  <img
+                    src={URL.createObjectURL(
+                      menuImage
+                    )}
+                    alt="Preview"
+                  />
+                ) : editingItem?.image
+                    ?.url ? (
+                  <img
+                    src={
+                      editingItem.image
+                        .url
+                    }
+                    alt={
+                      editingItem.name
+                    }
+                  />
+                ) : (
+                  <div>
+                    <span>
+                      ♨
+                    </span>
+
+                    <small>
+                      Food image preview
+                    </small>
+                  </div>
+                )}
+
+              </div>
+
+            </div>
+
+            <div className="mt-modal-actions">
+
+              <button
+                type="button"
+                className="mt-cancel"
+                onClick={
+                  closeMenuModal
+                }
+                disabled={
+                  menuSaving
+                }
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className="mt-save"
+                onClick={
+                  saveMenuItem
+                }
+                disabled={
+                  menuSaving
+                }
+              >
+                {menuSaving
+                  ? "Saving..."
+                  : editingItem
+                  ? "Save changes"
+                  : "Add item"}
+              </button>
+
+            </div>
+
           </div>
-        </section>
-      </div>
+        </div>
+      )}
+
+      {/* ====================================================
+          ADD TABLE MODAL
+          ==================================================== */}
+
+      {tableModal && (
+        <div
+          className="mt-modal-overlay"
+          onClick={
+            closeTableModal
+          }
+        >
+          <div
+            className="mt-modal mt-small-modal"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+
+            <div className="mt-modal-handle" />
+
+            <div className="mt-modal-header">
+
+              <div>
+                <p className="mt-eyebrow">
+                  QR & TABLES
+                </p>
+
+                <h2>
+                  Add table
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                className="mt-close"
+                onClick={
+                  closeTableModal
+                }
+              >
+                ×
+              </button>
+
+            </div>
+
+            <div className="mt-form">
+
+              <label>
+                <span>
+                  Table name
+                </span>
+
+                <input
+                  value={tableName}
+                  onChange={(event) =>
+                    setTableName(
+                      event.target.value
+                    )
+                  }
+                  placeholder="Table 1"
+                  autoFocus
+                />
+              </label>
+
+              <div className="mt-table-example">
+                <div>
+                  T
+                </div>
+
+                <span>
+                  Use names like
+                  <strong>
+                    Table 1
+                  </strong>
+                  ,
+                  <strong>
+                    Table 2
+                  </strong>
+                  or
+                  <strong>
+                    VIP Table
+                  </strong>
+                </span>
+              </div>
+
+            </div>
+
+            <div className="mt-modal-actions">
+
+              <button
+                type="button"
+                className="mt-cancel"
+                onClick={
+                  closeTableModal
+                }
+                disabled={
+                  tableSaving
+                }
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className="mt-save"
+                onClick={
+                  addTable
+                }
+                disabled={
+                  tableSaving
+                }
+              >
+                {tableSaving
+                  ? "Adding..."
+                  : "Add table"}
+              </button>
+
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ====================================================
+          QR MODAL
+          ==================================================== */}
+
+      {qrModal &&
+        selectedTable && (
+          <div
+            className="mt-modal-overlay"
+            onClick={closeQr}
+          >
+            <div
+              className="mt-qr-modal"
+              onClick={(event) =>
+                event.stopPropagation()
+              }
+            >
+
+              <div className="mt-modal-handle" />
+
+              <button
+                type="button"
+                className="mt-qr-close"
+                onClick={closeQr}
+              >
+                ×
+              </button>
+
+              <p className="mt-eyebrow">
+                CUSTOMER QR
+              </p>
+
+              <h2>
+                {selectedTable.name}
+              </h2>
+
+              <p className="mt-qr-description">
+                Customers can scan this QR
+                code to open the menu for
+                this table.
+              </p>
+
+              <div className="mt-big-qr">
+                <QR
+  value={customerUrl(
+    selectedTable
+  )}
+/>
+              </div>
+
+              <div className="mt-qr-url">
+                {customerUrl(
+                  selectedTable
+                )}
+              </div>
+
+              <div className="mt-qr-actions">
+
+                <button
+                  type="button"
+                  className="mt-save"
+                  onClick={() =>
+                    copyCustomerUrl(
+                      selectedTable
+                    )
+                  }
+                >
+                  Copy link
+                </button>
+
+                <button
+                  type="button"
+                  className="mt-cancel"
+                  onClick={() =>
+                    openCustomerMenu(
+                      selectedTable
+                    )
+                  }
+                >
+                  Open menu
+                </button>
+
+              </div>
+
+            </div>
+          </div>
+        )}
+
     </KitchenShell>
   );
 }

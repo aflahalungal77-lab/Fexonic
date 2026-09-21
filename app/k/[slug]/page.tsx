@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase";
 
@@ -16,14 +22,11 @@ type Order = {
   status: OrderStatus;
   total: number | string | null;
   created_at: string;
-  table_id?: string | null;
-  tables?: { name: string } | null;
-  order_items?: Array<{
-    id: string;
+  table_id: string | null;
+  device_id?: string | null;
+  tables?: {
     name: string;
-    quantity: number;
-    price: number | string;
-  }>;
+  } | null;
 };
 
 type CustomerRequest = {
@@ -35,155 +38,273 @@ type CustomerRequest = {
     | "EXTRA_FOOD"
     | "CALL_WAITER"
     | "OTHER";
-  message: string | null;
   status: "PENDING" | "DONE";
   created_at: string;
   table_id: string;
-  tables?: { name: string } | null;
+  tables?: {
+    name: string;
+  } | null;
 };
 
-type OrderCounts = {
-  today: number;
-  week: number;
-  month: number;
-  overall: number;
+type Restaurant = {
+  id: string;
+  name: string;
+  slug: string;
 };
 
-const requestLabels: Record<CustomerRequest["type"], string> = {
-  TISSUE: "Tissue needed",
-  CUTLERY: "Cutlery needed",
-  WATER: "Water needed",
-  EXTRA_FOOD: "Extra food",
-  CALL_WAITER: "Call waiter",
-  OTHER: "Customer request",
-};
+type IconName =
+  | "home"
+  | "orders"
+  | "bell"
+  | "table"
+  | "menu"
+  | "qr"
+  | "staff"
+  | "settings"
+  | "reports"
+  | "history"
+  | "feedback"
+  | "logout"
+  | "arrow"
+  | "document"
+  | "chef"
+  | "ready"
+  | "people"
+  | "close"
+  | "menuDots"
+  | "refresh";
 
-const statusLabels: Record<OrderStatus, string> = {
-  NEW: "New",
-  PREPARING: "Preparing",
-  READY: "Ready",
-  SERVED: "Served",
-  CANCELLED: "Cancelled",
-};
+function Icon({
+  name,
+  size = 20,
+  strokeWidth = 1.8,
+}: {
+  name: IconName;
+  size?: number;
+  strokeWidth?: number;
+}) {
+  const common = {
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
 
-function formatTime(value: string) {
-  return new Date(value).toLocaleTimeString("en-IN", {
+  const paths: Record<IconName, ReactNode> = {
+    home: (
+      <>
+        <path d="M3 10.8 12 3l9 7.8" />
+        <path d="M5.5 9.5V21h13V9.5" />
+        <path d="M9.5 21v-6h5v6" />
+      </>
+    ),
+
+    orders: (
+      <>
+        <rect x="5" y="3" width="14" height="18" rx="2" />
+        <path d="M9 7h6" />
+        <path d="M9 11h6" />
+        <path d="M9 15h4" />
+      </>
+    ),
+
+    bell: (
+      <>
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+        <path d="M10 21h4" />
+      </>
+    ),
+
+    table: (
+      <>
+        <path d="M4 7h16" />
+        <path d="M6 7v13" />
+        <path d="M18 7v13" />
+        <path d="M3 20h18" />
+        <path d="M7 4h10v3H7z" />
+      </>
+    ),
+
+    menu: (
+      <>
+        <path d="M4 6h16" />
+        <path d="M4 12h16" />
+        <path d="M4 18h16" />
+      </>
+    ),
+
+    qr: (
+      <>
+        <rect x="4" y="4" width="6" height="6" />
+        <rect x="14" y="4" width="6" height="6" />
+        <rect x="4" y="14" width="6" height="6" />
+        <path d="M14 14h3v3h-3z" />
+        <path d="M20 14v6" />
+        <path d="M14 20h3" />
+      </>
+    ),
+
+    staff: (
+      <>
+        <circle cx="9" cy="8" r="3" />
+        <circle cx="17" cy="9" r="2.5" />
+        <path d="M3 20c0-3.2 2.6-5 6-5s6 1.8 6 5" />
+        <path d="M15 15c3.2 0 5 1.6 5 4" />
+      </>
+    ),
+
+    settings: (
+      <>
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 1.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5v.1h-2.6v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1-1.8-1.8.1-.1A1.7 1.7 0 0 0 8 15a1.7 1.7 0 0 0-1.5-1H6.4v-2.6h.1A1.7 1.7 0 0 0 8 10a1.7 1.7 0 0 0-.3-1.9l-.1-.1 1.8-1.8.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V5h2.6v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1 1.8 1.8-.1.1A1.7 1.7 0 0 0 19.4 10c.2.6.7 1 1.5 1h.1v2.6h-.1c-.8 0-1.3.5-1.5 1.4Z" />
+      </>
+    ),
+
+    reports: (
+      <>
+        <path d="M5 20V10" />
+        <path d="M12 20V4" />
+        <path d="M19 20v-7" />
+      </>
+    ),
+
+    history: (
+      <>
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M12 7v5l3 2" />
+        <path d="M4 5v4h4" />
+      </>
+    ),
+
+    feedback: (
+      <>
+        <path d="M5 5h14v11H9l-4 4z" />
+        <path d="M8 9h8" />
+        <path d="M8 12h5" />
+      </>
+    ),
+
+    logout: (
+      <>
+        <path d="M10 5H5v14h5" />
+        <path d="M14 8l4 4-4 4" />
+        <path d="M18 12H9" />
+      </>
+    ),
+
+    arrow: (
+      <>
+        <path d="M5 12h13" />
+        <path d="m13 6 6 6-6 6" />
+      </>
+    ),
+
+    document: (
+      <>
+        <rect x="5" y="3" width="14" height="18" rx="2" />
+        <path d="M9 8h6" />
+        <path d="M9 12h6" />
+        <path d="M9 16h3" />
+      </>
+    ),
+
+    chef: (
+      <>
+        <path d="M7 11h10v9H7z" />
+        <path d="M5 11h14" />
+        <path d="M7 11a4 4 0 1 1 2-7 4 4 0 0 1 6 0 4 4 0 1 1 2 7" />
+      </>
+    ),
+
+    ready: (
+      <>
+        <path d="M5 17h14" />
+        <path d="M7 17a5 5 0 0 1 10 0" />
+        <path d="M4 21h16" />
+      </>
+    ),
+
+    people: (
+      <>
+        <circle cx="9" cy="8" r="3" />
+        <circle cx="17" cy="9" r="2" />
+        <path d="M3 20c0-3 2.5-5 6-5s6 2 6 5" />
+        <path d="M15 15c3 0 5 1.5 5 4" />
+      </>
+    ),
+
+    close: (
+      <>
+        <path d="m6 6 12 12" />
+        <path d="M18 6 6 18" />
+      </>
+    ),
+
+    menuDots: (
+      <>
+        <circle cx="5" cy="12" r="1" fill="currentColor" stroke="none" />
+        <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+        <circle cx="19" cy="12" r="1" fill="currentColor" stroke="none" />
+      </>
+    ),
+
+    refresh: (
+      <>
+        <path d="M20 11a8 8 0 0 0-14.5-4L4 9" />
+        <path d="M4 5v4h4" />
+        <path d="M4 13a8 8 0 0 0 14.5 4L20 15" />
+        <path d="M20 19v-4h-4" />
+      </>
+    ),
+  };
+
+  return <svg {...common}>{paths[name]}</svg>;
+}
+
+function sameDay(date: string) {
+  const a = new Date(date);
+  const b = new Date();
+
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function formatTime(date: string) {
+  return new Date(date).toLocaleTimeString("en-IN", {
     hour: "2-digit",
     minute: "2-digit",
   });
 }
 
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("en-IN", {
+function formatDate() {
+  return new Date().toLocaleDateString("en-IN", {
+    weekday: "short",
     day: "2-digit",
     month: "short",
   });
 }
 
-function shortOrderId(id: string) {
-  return `#${id.slice(0, 6).toUpperCase()}`;
+function formatCurrentTime() {
+  return new Date().toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-/**
- * Returns the start of today in the restaurant's expected timezone.
- *
- * Fexonic currently targets Indian restaurants, so the dashboard
- * uses Asia/Kolkata for business-day calculations.
- */
-function getIndiaDateParts(date = new Date()) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
+function getGreeting() {
+  const hour = new Date().getHours();
 
-  const result: Record<string, string> = {};
-
-  for (const part of parts) {
-    if (part.type !== "literal") {
-      result[part.type] = part.value;
-    }
-  }
-
-  return {
-    year: Number(result.year),
-    month: Number(result.month),
-    day: Number(result.day),
-  };
-}
-
-/**
- * Converts an India calendar date/time into a UTC Date.
- *
- * Example:
- * 2026-09-21 00:00 IST
- * becomes
- * 2026-09-20 18:30 UTC
- */
-function indiaDateToUTC(
-  year: number,
-  month: number,
-  day: number,
-  hour = 0,
-  minute = 0,
-  second = 0,
-) {
-  return new Date(
-    Date.UTC(year, month - 1, day, hour - 5, minute - 30, second),
-  );
-}
-
-/**
- * Get business-period boundaries:
- *
- * todayStart
- * weekStart (Monday)
- * monthStart
- * tomorrowStart
- */
-function getOrderPeriodBounds() {
-  const now = new Date();
-  const india = getIndiaDateParts(now);
-
-  const todayStart = indiaDateToUTC(
-    india.year,
-    india.month,
-    india.day,
-  );
-
-  const tomorrowDate = new Date(todayStart);
-  tomorrowDate.setUTCDate(tomorrowDate.getUTCDate() + 1);
-
-  const monthStart = indiaDateToUTC(
-    india.year,
-    india.month,
-    1,
-  );
-
-  /**
-   * JavaScript:
-   * Sunday = 0
-   * Monday = 1
-   * ...
-   *
-   * We want Monday as the beginning of the business week.
-   */
-  const weekday = new Date(todayStart).getUTCDay();
-
-  const daysSinceMonday = weekday === 0 ? 6 : weekday - 1;
-
-  const weekStart = new Date(todayStart);
-  weekStart.setUTCDate(
-    weekStart.getUTCDate() - daysSinceMonday,
-  );
-
-  return {
-    todayStart: todayStart.toISOString(),
-    tomorrowStart: tomorrowDate.toISOString(),
-    weekStart: weekStart.toISOString(),
-    monthStart: monthStart.toISOString(),
-  };
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
 }
 
 export default function KitchenDashboard({
@@ -194,28 +315,22 @@ export default function KitchenDashboard({
   const router = useRouter();
 
   const [slug, setSlug] = useState("");
-  const [restaurant, setRestaurant] = useState<any>(null);
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [requests, setRequests] = useState<CustomerRequest[]>([]);
 
-  const [orderCounts, setOrderCounts] = useState<OrderCounts>({
-    today: 0,
-    week: 0,
-    month: 0,
-    overall: 0,
-  });
+  const [todayOrders, setTodayOrders] = useState<Order[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const [busyOrder, setBusyOrder] = useState<string | null>(null);
-  const [busyRequest, setBusyRequest] = useState<string | null>(null);
-
-  const [mobileMenu, setMobileMenu] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
-    params.then((value) => setSlug(value.slug));
+    params.then((value) => {
+      setSlug(value.slug);
+    });
   }, [params]);
 
   const loadDashboard = useCallback(async () => {
@@ -226,19 +341,12 @@ export default function KitchenDashboard({
     setRefreshing(true);
 
     try {
-      /**
-       * ------------------------------------------------------------
-       * 1. Load restaurant
-       * ------------------------------------------------------------
-       */
-      const {
-        data: restaurantData,
-        error: restaurantError,
-      } = await supabase
-        .from("restaurants")
-        .select("*")
-        .eq("slug", slug)
-        .single();
+      const { data: restaurantData, error: restaurantError } =
+        await supabase
+          .from("restaurants")
+          .select("id,name,slug")
+          .eq("slug", slug)
+          .single();
 
       if (restaurantError || !restaurantData) {
         router.replace("/kitchen");
@@ -247,154 +355,36 @@ export default function KitchenDashboard({
 
       setRestaurant(restaurantData);
 
-      /**
-       * ------------------------------------------------------------
-       * 2. Load live dashboard data + order counts in parallel
-       * ------------------------------------------------------------
-       *
-       * Live orders:
-       * NEW / PREPARING / READY
-       *
-       * Historical counts:
-       * Today / Week / Month / Overall
-       *
-       * The historical queries use COUNT on the database instead
-       * of downloading every order into the browser.
-       */
-      const {
-        todayStart,
-        tomorrowStart,
-        weekStart,
-        monthStart,
-      } = getOrderPeriodBounds();
+      const { data: orderData, error: orderError } = await supabase
+        .from("orders")
+        .select(
+          "id,status,total,created_at,table_id,device_id,tables(name)"
+        )
+        .eq("restaurant_id", restaurantData.id)
+        .order("created_at", { ascending: false })
+        .limit(200);
 
-      const [
-        { data: orderData, error: orderError },
-        { data: requestData, error: requestError },
+      if (orderError) throw orderError;
 
-        todayCountResult,
-        weekCountResult,
-        monthCountResult,
-        overallCountResult,
-      ] = await Promise.all([
-        /**
-         * Live orders
-         */
-        supabase
-          .from("orders")
-          .select(
-            "id,status,total,created_at,table_id,tables(name),order_items(id,name,quantity,price)",
-          )
-          .eq("restaurant_id", restaurantData.id)
-          .in("status", ["NEW", "PREPARING", "READY"])
-          .order("created_at", { ascending: false })
-          .limit(30),
-
-        /**
-         * Pending customer requests
-         */
-        supabase
+      const { data: requestData, error: requestError } =
+        await supabase
           .from("customer_requests")
-          .select(
-            "id,type,message,status,created_at,table_id,tables(name)",
-          )
+          .select("id,type,status,created_at,table_id,tables(name)")
           .eq("restaurant_id", restaurantData.id)
           .eq("status", "PENDING")
           .order("created_at", { ascending: false })
-          .limit(20),
+          .limit(100);
 
-        /**
-         * TODAY
-         */
-        supabase
-          .from("orders")
-          .select("id", {
-            count: "exact",
-            head: true,
-          })
-          .eq("restaurant_id", restaurantData.id)
-          .gte("created_at", todayStart)
-          .lt("created_at", tomorrowStart),
+      if (requestError) throw requestError;
 
-        /**
-         * THIS WEEK
-         */
-        supabase
-          .from("orders")
-          .select("id", {
-            count: "exact",
-            head: true,
-          })
-          .eq("restaurant_id", restaurantData.id)
-          .gte("created_at", weekStart),
+      const allOrders = (orderData || []) as Order[];
 
-        /**
-         * THIS MONTH
-         */
-        supabase
-          .from("orders")
-          .select("id", {
-            count: "exact",
-            head: true,
-          })
-          .eq("restaurant_id", restaurantData.id)
-          .gte("created_at", monthStart),
+      setOrders(allOrders);
+      setRequests((requestData || []) as CustomerRequest[]);
 
-        /**
-         * OVERALL
-         */
-        supabase
-          .from("orders")
-          .select("id", {
-            count: "exact",
-            head: true,
-          })
-          .eq("restaurant_id", restaurantData.id),
-      ]);
-
-      /**
-       * ------------------------------------------------------------
-       * Error handling
-       * ------------------------------------------------------------
-       */
-      if (orderError) {
-        throw orderError;
-      }
-
-      if (requestError) {
-        throw requestError;
-      }
-
-      if (todayCountResult.error) {
-        throw todayCountResult.error;
-      }
-
-      if (weekCountResult.error) {
-        throw weekCountResult.error;
-      }
-
-      if (monthCountResult.error) {
-        throw monthCountResult.error;
-      }
-
-      if (overallCountResult.error) {
-        throw overallCountResult.error;
-      }
-
-      /**
-       * ------------------------------------------------------------
-       * Update state
-       * ------------------------------------------------------------
-       */
-      setOrders(orderData || []);
-      setRequests(requestData || []);
-
-      setOrderCounts({
-        today: todayCountResult.count || 0,
-        week: weekCountResult.count || 0,
-        month: monthCountResult.count || 0,
-        overall: overallCountResult.count || 0,
-      });
+      setTodayOrders(
+        allOrders.filter((order) => sameDay(order.created_at))
+      );
     } catch (error) {
       console.error("Dashboard loading error:", error);
     } finally {
@@ -403,490 +393,525 @@ export default function KitchenDashboard({
     }
   }, [router, slug]);
 
-  /**
-   * Initial dashboard load
-   */
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
 
-  /**
-   * Auto refresh.
-   *
-   * This keeps the existing 8-second dashboard refresh behavior.
+  /*
+   * Polling fallback.
+   * This keeps the dashboard live even when Supabase Realtime
+   * is not enabled in the project.
    */
   useEffect(() => {
     if (!restaurant?.id) return;
 
-    const interval = window.setInterval(
-      loadDashboard,
-      8000,
-    );
+    const interval = window.setInterval(() => {
+      loadDashboard();
+    }, 8000);
 
     return () => window.clearInterval(interval);
   }, [loadDashboard, restaurant?.id]);
 
-  /**
-   * ------------------------------------------------------------
-   * Update order status
-   * ------------------------------------------------------------
+  /*
+   * Optional Realtime listener.
+   * If Realtime is enabled in Supabase, changes appear immediately.
+   * Polling remains as a fallback.
    */
-  async function updateOrderStatus(
-    orderId: string,
-    status: OrderStatus,
-  ) {
+  useEffect(() => {
     if (!restaurant?.id) return;
 
-    setBusyOrder(orderId);
+    const supabase = supabaseBrowser();
 
-    try {
-      const { error } = await supabaseBrowser()
-        .from("orders")
-        .update({ status })
-        .eq("id", orderId)
-        .eq("restaurant_id", restaurant.id);
-
-      if (error) {
-        throw error;
-      }
-
-      /**
-       * Refresh both live orders and historical counters.
-       */
-      await loadDashboard();
-    } catch (error: any) {
-      window.alert(
-        error?.message ||
-          "Could not update order status",
-      );
-    } finally {
-      setBusyOrder(null);
-    }
-  }
-
-  /**
-   * ------------------------------------------------------------
-   * Complete customer request
-   * ------------------------------------------------------------
-   */
-  async function completeRequest(requestId: string) {
-    setBusyRequest(requestId);
-
-    try {
-      const response = await fetch(
-        "/api/requests",
+    const channel = supabase
+      .channel(`kitchen-dashboard-${restaurant.id}`)
+      .on(
+        "postgres_changes",
         {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            id: requestId,
-            status: "DONE",
-          }),
+          event: "*",
+          schema: "public",
+          table: "orders",
+          filter: `restaurant_id=eq.${restaurant.id}`,
         },
-      );
+        () => {
+          loadDashboard();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "customer_requests",
+          filter: `restaurant_id=eq.${restaurant.id}`,
+        },
+        () => {
+          loadDashboard();
+        }
+      )
+      .subscribe();
 
-      const data = await response.json();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [restaurant?.id, loadDashboard]);
 
-      if (!response.ok) {
-        throw new Error(
-          data?.error ||
-            "Could not complete request",
-        );
-      }
-
-      await loadDashboard();
-    } catch (error: any) {
-      window.alert(
-        error?.message ||
-          "Could not complete request",
-      );
-    } finally {
-      setBusyRequest(null);
-    }
-  }
-
-  /**
-   * ------------------------------------------------------------
-   * Live dashboard stats
-   * ------------------------------------------------------------
-   */
   const stats = useMemo(() => {
+    const activeOrders = orders.filter(
+      (order) =>
+        order.status === "NEW" ||
+        order.status === "PREPARING" ||
+        order.status === "READY"
+    );
+
     const newOrders = orders.filter(
-      (order) => order.status === "NEW",
-    ).length;
+      (order) => order.status === "NEW"
+    );
 
     const preparing = orders.filter(
-      (order) => order.status === "PREPARING",
-    ).length;
+      (order) => order.status === "PREPARING"
+    );
 
     const ready = orders.filter(
-      (order) => order.status === "READY",
-    ).length;
+      (order) => order.status === "READY"
+    );
+
+    const nonCancelledToday = todayOrders.filter(
+      (order) => order.status !== "CANCELLED"
+    );
+
+    const totalSales = nonCancelledToday.reduce(
+      (sum, order) => sum + Number(order.total || 0),
+      0
+    );
+
+    /*
+     * Orders created from the same browser/device are counted
+     * as one customer when device_id is available.
+     */
+    const deviceCustomers = new Set(
+      todayOrders
+        .map((order) => order.device_id)
+        .filter(Boolean)
+    );
+
+    const customers =
+      deviceCustomers.size > 0
+        ? deviceCustomers.size
+        : todayOrders.length;
+
+    const newOrderTables = [
+      ...new Set(
+        newOrders.map(
+          (order) => order.tables?.name || "Table"
+        )
+      ),
+    ];
 
     return {
-      newOrders,
-      preparing,
-      ready,
+      activeOrders: activeOrders.length,
+      newOrders: newOrders.length,
+      preparing: preparing.length,
+      ready: ready.length,
       requests: requests.length,
+      totalOrders: todayOrders.length,
+      customers,
+      totalSales,
+      newOrderTables,
     };
-  }, [orders, requests]);
+  }, [orders, requests, todayOrders]);
 
-  /**
-   * Navigate inside kitchen workspace.
-   */
   const go = (path: string) => {
-    setMobileMenu(false);
+    setDrawerOpen(false);
     router.push(path);
   };
 
-  /**
-   * ------------------------------------------------------------
-   * Loading state
-   * ------------------------------------------------------------
-   */
+  const openOrders = () => {
+    go(`/k/${slug}/orders`);
+  };
+
+  const openRequests = () => {
+    go(`/k/${slug}/requests`);
+  };
+
+  const openTables = () => {
+    go(`/k/${slug}/manage`);
+  };
+
   if (loading && !restaurant) {
     return (
-      <main className="fx-app">
+      <main className="fx-kitchen-root">
         <div className="fx-loading-screen">
-          <div className="fx-loading-card">
-            <div className="fx-logo-mark">
-              F
-            </div>
-
-            <strong>
-              Fexonic Kitchen
-            </strong>
-
-            <p>
-              Preparing your workspace…
-            </p>
-          </div>
+          <div className="fx-loading-mark">F</div>
+          <strong>FEXONIC</strong>
+          <span>Preparing kitchen workspace…</span>
         </div>
       </main>
     );
   }
 
-  if (!restaurant) {
-    return null;
-  }
+  if (!restaurant) return null;
 
   return (
-    <main className="fx-app">
+    <main className="fx-kitchen-root">
       {/* =========================================================
-          DESKTOP SIDEBAR
+          MOBILE / TABLET DRAWER
       ========================================================== */}
-      <aside className="fx-sidebar">
-        <div className="fx-sidebar-brand">
-          <div className="fx-brand-mark">
-            F
+
+      {drawerOpen && (
+        <button
+          type="button"
+          className="fx-drawer-backdrop"
+          aria-label="Close navigation"
+          onClick={() => setDrawerOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`fx-navigation-drawer ${
+          drawerOpen ? "is-open" : ""
+        }`}
+      >
+        <div className="fx-drawer-header">
+          <div>
+            <strong>{restaurant.name}</strong>
+            <span>Restaurant Workspace</span>
           </div>
 
-          <div>
-            <strong>Fexonic</strong>
-            <span>
-              Kitchen workspace
-            </span>
-          </div>
+          <button
+            type="button"
+            className="fx-drawer-close"
+            onClick={() => setDrawerOpen(false)}
+            aria-label="Close navigation"
+          >
+            <Icon name="close" size={20} />
+          </button>
         </div>
 
-        <div className="fx-restaurant-mini">
-          <span className="fx-avatar">
-            {String(
-              restaurant.name || "R",
-            )
+        <div className="fx-drawer-scroll">
+          <NavigationSection
+            title="WORKSPACE"
+            items={[
+              {
+                label: "Dashboard",
+                icon: "home",
+                active: true,
+                onClick: () => go(`/k/${slug}`),
+              },
+              {
+                label: "Orders",
+                icon: "orders",
+                badge: stats.newOrders,
+                onClick: openOrders,
+              },
+              {
+                label: "Requests",
+                icon: "bell",
+                badge: stats.requests,
+                onClick: openRequests,
+              },
+              {
+                label: "Tables",
+                icon: "table",
+                onClick: openTables,
+              },
+            ]}
+          />
+
+          <NavigationSection
+            title="MANAGEMENT"
+            items={[
+              {
+                label: "Menu",
+                icon: "menu",
+                onClick: openTables,
+              },
+              {
+                label: "Tables & QR",
+                icon: "qr",
+                onClick: openTables,
+              },
+              {
+                label: "Staff",
+                icon: "staff",
+                onClick: () => {},
+              },
+              {
+                label: "Settings",
+                icon: "settings",
+                onClick: () => {},
+              },
+            ]}
+          />
+
+          <NavigationSection
+            title="BUSINESS"
+            items={[
+              {
+                label: "Reports",
+                icon: "reports",
+                onClick: () => {},
+              },
+              {
+                label: "Order History",
+                icon: "history",
+                onClick: openOrders,
+              },
+              {
+                label: "Feedback",
+                icon: "feedback",
+                onClick: () => {},
+              },
+            ]}
+          />
+        </div>
+
+        <div className="fx-drawer-profile">
+          <div className="fx-profile-avatar">
+            {restaurant.name
               .slice(0, 1)
               .toUpperCase()}
-          </span>
-
-          <div>
-            <strong>
-              {restaurant.name}
-            </strong>
-
-            <span>
-              Restaurant workspace
-            </span>
           </div>
+
+          <div className="fx-profile-info">
+            <strong>{restaurant.name}</strong>
+            <span>View Restaurant Profile</span>
+          </div>
+
+          <span className="fx-profile-arrow">›</span>
         </div>
 
-        <nav className="fx-sidebar-nav">
-          <button
-            className="active"
-            onClick={() =>
-              go(`/k/${slug}`)
-            }
-          >
-            <span>⌂</span>
-            Dashboard
-          </button>
-
-          <button
-            onClick={() =>
-              go(`/k/${slug}/orders`)
-            }
-          >
-            <span>▤</span>
-            Orders
-
-            {stats.newOrders > 0 && (
-              <b>{stats.newOrders}</b>
-            )}
-          </button>
-
-          <button
-            onClick={() =>
-              go(`/k/${slug}/requests`)
-            }
-          >
-            <span>♧</span>
-            Requests
-
-            {stats.requests > 0 && (
-              <b>{stats.requests}</b>
-            )}
-          </button>
-
-          <button
-            onClick={() =>
-              go(`/k/${slug}/manage`)
-            }
-          >
-            <span>▦</span>
-            Menu & Tables
-          </button>
-        </nav>
-
-        <div className="fx-sidebar-bottom">
-          <button
-            onClick={() =>
-              go(`/k/${slug}/manage`)
-            }
-          >
-            <span>⚙</span>
-            Manage workspace
-          </button>
-
-          <a
-            href="/api/auth/signout"
-            className="fx-sidebar-logout"
-          >
-            <span>↪</span>
-            Sign out
-          </a>
-        </div>
+        <a
+          href="/api/auth/signout"
+          className="fx-drawer-logout"
+        >
+          <Icon name="logout" size={18} />
+          <span>Logout</span>
+        </a>
       </aside>
 
       {/* =========================================================
-          MOBILE DRAWER
+          DESKTOP SIDEBAR
       ========================================================== */}
-      {mobileMenu && (
-        <div
-          className="fx-mobile-overlay"
-          onClick={() =>
-            setMobileMenu(false)
-          }
-        >
-          <aside
-            className="fx-mobile-drawer"
-            onClick={(event) =>
-              event.stopPropagation()
-            }
-          >
-            <div className="fx-drawer-top">
-              <div>
-                <strong>
-                  {restaurant.name}
-                </strong>
 
-                <span>
-                  Powered by Fexonic
-                </span>
-              </div>
-
-              <button
-                onClick={() =>
-                  setMobileMenu(false)
-                }
-                aria-label="Close menu"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="fx-drawer-links">
-              <button
-                onClick={() =>
-                  go(`/k/${slug}`)
-                }
-              >
-                ⌂ Dashboard
-              </button>
-
-              <button
-                onClick={() =>
-                  go(`/k/${slug}/orders`)
-                }
-              >
-                ▤ Orders
-              </button>
-
-              <button
-                onClick={() =>
-                  go(`/k/${slug}/requests`)
-                }
-              >
-                ♧ Requests
-              </button>
-
-              <button
-                onClick={() =>
-                  go(`/k/${slug}/manage`)
-                }
-              >
-                ▦ Menu & Tables
-              </button>
-            </div>
-
-            <a
-              href="/api/auth/signout"
-              className="fx-drawer-logout"
-            >
-              ↪ Sign out
-            </a>
-          </aside>
+      <aside className="fx-desktop-sidebar">
+        <div className="fx-desktop-brand">
+          <strong>{restaurant.name}</strong>
+          <span>Restaurant Workspace</span>
         </div>
-      )}
+
+        <div className="fx-desktop-scroll">
+          <NavigationSection
+            title="WORKSPACE"
+            items={[
+              {
+                label: "Dashboard",
+                icon: "home",
+                active: true,
+                onClick: () => go(`/k/${slug}`),
+              },
+              {
+                label: "Orders",
+                icon: "orders",
+                badge: stats.newOrders,
+                onClick: openOrders,
+              },
+              {
+                label: "Requests",
+                icon: "bell",
+                badge: stats.requests,
+                onClick: openRequests,
+              },
+              {
+                label: "Tables",
+                icon: "table",
+                onClick: openTables,
+              },
+            ]}
+          />
+
+          <NavigationSection
+            title="MANAGEMENT"
+            items={[
+              {
+                label: "Menu",
+                icon: "menu",
+                onClick: openTables,
+              },
+              {
+                label: "Tables & QR",
+                icon: "qr",
+                onClick: openTables,
+              },
+              {
+                label: "Staff",
+                icon: "staff",
+                onClick: () => {},
+              },
+              {
+                label: "Settings",
+                icon: "settings",
+                onClick: () => {},
+              },
+            ]}
+          />
+
+          <NavigationSection
+            title="BUSINESS"
+            items={[
+              {
+                label: "Reports",
+                icon: "reports",
+                onClick: () => {},
+              },
+              {
+                label: "Order History",
+                icon: "history",
+                onClick: openOrders,
+              },
+              {
+                label: "Feedback",
+                icon: "feedback",
+                onClick: () => {},
+              },
+            ]}
+          />
+        </div>
+
+        <div className="fx-desktop-profile">
+          <div className="fx-profile-avatar">
+            {restaurant.name
+              .slice(0, 1)
+              .toUpperCase()}
+          </div>
+
+          <div className="fx-profile-info">
+            <strong>{restaurant.name}</strong>
+            <span>View Restaurant Profile</span>
+          </div>
+
+          <span className="fx-profile-arrow">›</span>
+        </div>
+
+        <a
+          href="/api/auth/signout"
+          className="fx-desktop-logout"
+        >
+          <Icon name="logout" size={18} />
+          <span>Logout</span>
+        </a>
+      </aside>
 
       {/* =========================================================
           MAIN
       ========================================================== */}
-      <div className="fx-main">
-        {/* =======================================================
-            TOP BAR
-        ======================================================== */}
-        <header className="fx-topbar">
-          <div className="fx-topbar-title">
-            <span className="fx-mobile-brand">
-              FEXONIC
-            </span>
 
-            <span className="fx-desktop-context">
-              Kitchen workspace / Dashboard
-            </span>
+      <section className="fx-kitchen-main">
+        {/* TOP MOBILE HEADER */}
+
+        <header className="fx-mobile-topbar">
+          <div className="fx-mobile-brand">
+            <strong>{restaurant.name}</strong>
+            <span>Powered by FEXONIC</span>
           </div>
 
-          <div className="fx-topbar-actions">
+          <div className="fx-mobile-top-actions">
             <button
-              className="fx-round-button"
+              type="button"
+              className="fx-notification-button"
+              onClick={openRequests}
+              aria-label="Requests"
+            >
+              <Icon name="bell" size={21} />
+
+              {stats.requests > 0 && (
+                <span className="fx-notification-dot" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              className="fx-hamburger-button"
+              onClick={() => setDrawerOpen(true)}
+              aria-label="Open navigation"
+            >
+              <Icon name="menu" size={23} />
+            </button>
+          </div>
+        </header>
+
+        {/* DESKTOP TOPBAR */}
+
+        <header className="fx-desktop-topbar">
+          <div>
+            <span>Kitchen Workspace</span>
+            <strong>Dashboard</strong>
+          </div>
+
+          <div className="fx-desktop-top-actions">
+            <button
+              type="button"
+              className="fx-refresh-button"
               onClick={loadDashboard}
               disabled={refreshing}
               aria-label="Refresh dashboard"
             >
-              {refreshing ? "…" : "↻"}
+              <Icon
+                name="refresh"
+                size={17}
+              />
             </button>
 
             <button
-              className="fx-round-button fx-mobile-only"
-              onClick={() =>
-                setMobileMenu(true)
-              }
-              aria-label="Open menu"
+              type="button"
+              className="fx-desktop-account"
+              onClick={() => setDrawerOpen(true)}
             >
-              ☰
-            </button>
-
-            <a
-              className="fx-topbar-profile"
-              href="/api/auth/signout"
-            >
-              <span className="fx-avatar">
-                {String(
-                  restaurant.name || "R",
-                )
+              <span className="fx-account-avatar">
+                {restaurant.name
                   .slice(0, 1)
                   .toUpperCase()}
               </span>
 
               <span>
-                <strong>
-                  {restaurant.name}
-                </strong>
-
-                <small>
-                  Restaurant
-                </small>
+                <strong>{restaurant.name}</strong>
+                <small>Restaurant</small>
               </span>
-            </a>
+            </button>
           </div>
         </header>
 
-        <div className="fx-content">
-          {/* =====================================================
-              WELCOME
-          ====================================================== */}
-          <section className="fx-welcome-row">
+        {/* =====================================================
+            DASHBOARD
+        ====================================================== */}
+
+        <div className="fx-dashboard-page">
+          <section className="fx-dashboard-heading">
             <div>
-              <p className="fx-kicker">
-                KITCHEN DASHBOARD
-              </p>
-
-              <h1>
-                Good morning<span>.</span>
-              </h1>
-
-              <p className="fx-muted">
-                Keep orders moving and your
-                guests happy.
-              </p>
+              <h1>Kitchen Dashboard</h1>
+              <p>{getGreeting()}!</p>
             </div>
 
-            <div className="fx-date-block">
-              <strong>
-                {new Date().toLocaleDateString(
-                  "en-IN",
-                  {
-                    weekday: "long",
-                  },
-                )}
-              </strong>
-
-              <span>
-                {new Date().toLocaleDateString(
-                  "en-IN",
-                  {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  },
-                )}
-              </span>
-
-              <small>
-                {new Date().toLocaleTimeString(
-                  "en-IN",
-                  {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  },
-                )}
-              </small>
+            <div className="fx-dashboard-date">
+              <strong>{formatDate()}</strong>
+              <span>{formatCurrentTime()}</span>
             </div>
           </section>
 
-          {/* =====================================================
-              ACTION NEEDED
-          ====================================================== */}
-          <section className="fx-action-card">
+          {/* ACTION NEEDED */}
+
+          <section
+            className={`fx-action-needed ${
+              stats.newOrders > 0
+                ? "has-new-orders"
+                : "no-new-orders"
+            }`}
+          >
             <div className="fx-action-icon">
-              !
+              <Icon name="bell" size={27} />
             </div>
 
-            <div className="fx-action-content">
-              <span className="fx-action-label">
-                ACTION NEEDED
-              </span>
+            <div className="fx-action-copy">
+              <span>ACTION NEEDED</span>
 
               <strong>
                 {stats.newOrders} new{" "}
@@ -895,654 +920,263 @@ export default function KitchenDashboard({
                   : "orders"}
               </strong>
 
-              <span>
-                {stats.requests} pending
-                customer{" "}
-                {stats.requests === 1
-                  ? "request"
-                  : "requests"}
-              </span>
+              <small>
+                {stats.newOrders > 0
+                  ? `Tables ${stats.newOrderTables.join(
+                      ", "
+                    )}`
+                  : "No new orders right now"}
+              </small>
             </div>
 
             <button
-              className="fx-arrow-button"
-              onClick={() =>
-                go(`/k/${slug}/orders`)
-              }
+              type="button"
+              className="fx-action-arrow"
+              onClick={openOrders}
               aria-label="View orders"
             >
-              →
+              <Icon name="arrow" size={20} />
             </button>
 
             <button
-              className="fx-action-link"
-              onClick={() =>
-                go(`/k/${slug}/orders`)
-              }
+              type="button"
+              className="fx-view-orders-button"
+              onClick={openOrders}
             >
-              View orders
+              View Orders
             </button>
           </section>
 
-          {/* =====================================================
-              LIVE STATUS STATS
-          ====================================================== */}
-          <section className="fx-stat-grid">
+          {/* FOUR STATUS CARDS */}
+
+          <section className="fx-status-grid">
             <button
-              className="fx-stat-card fx-stat-blue"
+              type="button"
+              className="fx-status-card fx-status-blue"
               onClick={() =>
                 go(
-                  `/k/${slug}/orders?status=NEW`,
+                  `/k/${slug}/orders?status=NEW`
                 )
               }
             >
-              <span>◫</span>
+              <div className="fx-status-card-icon">
+                <Icon name="document" size={19} />
+              </div>
 
-              <small>
-                New orders
-              </small>
-
-              <strong>
-                {stats.newOrders}
-              </strong>
+              <span>New Orders</span>
+              <strong>{stats.newOrders}</strong>
             </button>
 
             <button
-              className="fx-stat-card fx-stat-orange"
+              type="button"
+              className="fx-status-card fx-status-orange"
               onClick={() =>
                 go(
-                  `/k/${slug}/orders?status=PREPARING`,
+                  `/k/${slug}/orders?status=PREPARING`
                 )
               }
             >
-              <span>♨</span>
+              <div className="fx-status-card-icon">
+                <Icon name="chef" size={19} />
+              </div>
 
-              <small>
-                Preparing
-              </small>
-
-              <strong>
-                {stats.preparing}
-              </strong>
+              <span>Preparing</span>
+              <strong>{stats.preparing}</strong>
             </button>
 
             <button
-              className="fx-stat-card fx-stat-green"
+              type="button"
+              className="fx-status-card fx-status-green"
               onClick={() =>
                 go(
-                  `/k/${slug}/orders?status=READY`,
+                  `/k/${slug}/orders?status=READY`
                 )
               }
             >
-              <span>✓</span>
+              <div className="fx-status-card-icon">
+                <Icon name="ready" size={19} />
+              </div>
 
-              <small>
-                Ready
-              </small>
-
-              <strong>
-                {stats.ready}
-              </strong>
+              <span>Ready</span>
+              <strong>{stats.ready}</strong>
             </button>
 
             <button
-              className="fx-stat-card fx-stat-purple"
-              onClick={() =>
-                go(
-                  `/k/${slug}/requests`,
-                )
-              }
+              type="button"
+              className="fx-status-card fx-status-purple"
+              onClick={openRequests}
             >
-              <span>♧</span>
+              <div className="fx-status-card-icon">
+                <Icon name="people" size={19} />
+              </div>
 
-              <small>
-                Requests
-              </small>
-
-              <strong>
-                {stats.requests}
-              </strong>
+              <span>Requests</span>
+              <strong>{stats.requests}</strong>
             </button>
           </section>
 
-          {/* =====================================================
-              ORDER ANALYTICS
-          ====================================================== */}
-          <section className="fx-section-heading">
-            <div>
-              <p className="fx-kicker">
-                ORDER ANALYTICS
-              </p>
+          {/* TODAY OVERVIEW */}
 
-              <h2>
-                Orders overview
-              </h2>
+          <section className="fx-today-overview">
+            <div className="fx-overview-header">
+              <div>
+                <div className="fx-overview-title">
+                  <Icon name="reports" size={21} />
+                  <strong>Today’s Overview</strong>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {}}
+                className="fx-view-reports"
+              >
+                View Reports
+                <Icon name="arrow" size={16} />
+              </button>
+            </div>
+
+            <div className="fx-overview-metrics">
+              <div>
+                <strong>
+                  {stats.totalOrders}
+                </strong>
+                <span>Total Orders</span>
+              </div>
+
+              <div>
+                <strong>
+                  {stats.customers}
+                </strong>
+                <span>Customers</span>
+              </div>
+
+              <div>
+                <strong>
+                  ₹
+                  {stats.totalSales.toLocaleString(
+                    "en-IN"
+                  )}
+                </strong>
+                <span>Total Sales</span>
+              </div>
             </div>
           </section>
 
-          <section className="fx-stat-grid">
-            {/* TODAY */}
-            <div className="fx-stat-card fx-stat-blue">
-              <span>◷</span>
+          {/* QUOTE */}
 
-              <small>
-                Orders today
-              </small>
+          <section className="fx-dashboard-quote">
+            <p>
+              “Good food brings people together.”
+            </p>
 
-              <strong>
-                {orderCounts.today}
-              </strong>
-
-              <em>
-                Since midnight
-              </em>
-            </div>
-
-            {/* WEEK */}
-            <div className="fx-stat-card fx-stat-orange">
-              <span>▥</span>
-
-              <small>
-                Orders this week
-              </small>
-
-              <strong>
-                {orderCounts.week}
-              </strong>
-
-              <em>
-                Monday → today
-              </em>
-            </div>
-
-            {/* MONTH */}
-            <div className="fx-stat-card fx-stat-green">
-              <span>▦</span>
-
-              <small>
-                Orders this month
-              </small>
-
-              <strong>
-                {orderCounts.month}
-              </strong>
-
-              <em>
-                Current month
-              </em>
-            </div>
-
-            {/* OVERALL */}
-            <div className="fx-stat-card fx-stat-purple">
-              <span>∞</span>
-
-              <small>
-                Overall orders
-              </small>
-
-              <strong>
-                {orderCounts.overall}
-              </strong>
-
-              <em>
-                All time
-              </em>
-            </div>
+            <span>— Man.ko</span>
           </section>
-
-          {/* =====================================================
-              DASHBOARD GRID
-          ====================================================== */}
-          <div className="fx-dashboard-grid">
-            {/* ===================================================
-                PRIMARY COLUMN
-            ==================================================== */}
-            <div className="fx-primary-column">
-              <section className="fx-section-heading">
-                <div>
-                  <p className="fx-kicker">
-                    LIVE OPERATIONS
-                  </p>
-
-                  <h2>
-                    Recent orders
-                  </h2>
-                </div>
-
-                <button
-                  className="fx-text-button"
-                  onClick={() =>
-                    go(`/k/${slug}/orders`)
-                  }
-                >
-                  View all →
-                </button>
-              </section>
-
-              <section className="fx-order-list">
-                {orders.length === 0 ? (
-                  <div className="fx-empty-card">
-                    <div className="fx-empty-icon">
-                      ✓
-                    </div>
-
-                    <strong>
-                      All clear for now
-                    </strong>
-
-                    <p className="fx-muted">
-                      New customer orders will
-                      appear here.
-                    </p>
-                  </div>
-                ) : (
-                  orders
-                    .slice(0, 6)
-                    .map((order) => (
-                      <article
-                        className="fx-order-card"
-                        key={order.id}
-                      >
-                        <div className="fx-order-topline">
-                          <span
-                            className={`fx-status fx-status-${order.status.toLowerCase()}`}
-                          >
-                            {
-                              statusLabels[
-                                order.status
-                              ]
-                            }
-                          </span>
-
-                          <span className="fx-order-time">
-                            {formatTime(
-                              order.created_at,
-                            )}
-                          </span>
-                        </div>
-
-                        <div className="fx-order-mainline">
-                          <div>
-                            <h3>
-                              {order.tables
-                                ?.name ||
-                                "Table"}
-                            </h3>
-
-                            <p>
-                              {shortOrderId(
-                                order.id,
-                              )}{" "}
-                              ·{" "}
-                              {formatDate(
-                                order.created_at,
-                              )}
-                            </p>
-                          </div>
-
-                          <strong>
-                            ₹
-                            {Number(
-                              order.total || 0,
-                            ).toFixed(0)}
-                          </strong>
-                        </div>
-
-                        <ul className="fx-order-items">
-                          {(
-                            order.order_items ||
-                            []
-                          )
-                            .slice(0, 4)
-                            .map((item) => (
-                              <li
-                                key={item.id}
-                              >
-                                <span>
-                                  {
-                                    item.quantity
-                                  }{" "}
-                                  ×{" "}
-                                  {item.name}
-                                </span>
-
-                                <span>
-                                  ₹
-                                  {(
-                                    Number(
-                                      item.price,
-                                    ) *
-                                    item.quantity
-                                  ).toFixed(0)}
-                                </span>
-                              </li>
-                            ))}
-                        </ul>
-
-                        <div className="fx-order-actions">
-                          {/* NEW */}
-                          {order.status ===
-                            "NEW" && (
-                            <>
-                              <button
-                                className="fx-button fx-button-light"
-                                disabled={
-                                  busyOrder ===
-                                  order.id
-                                }
-                                onClick={() =>
-                                  updateOrderStatus(
-                                    order.id,
-                                    "CANCELLED",
-                                  )
-                                }
-                              >
-                                Reject
-                              </button>
-
-                              <button
-                                className="fx-button fx-button-dark"
-                                disabled={
-                                  busyOrder ===
-                                  order.id
-                                }
-                                onClick={() =>
-                                  updateOrderStatus(
-                                    order.id,
-                                    "PREPARING",
-                                  )
-                                }
-                              >
-                                Accept order
-                              </button>
-                            </>
-                          )}
-
-                          {/* PREPARING */}
-                          {order.status ===
-                            "PREPARING" && (
-                            <button
-                              className="fx-button fx-button-dark fx-button-full"
-                              disabled={
-                                busyOrder ===
-                                order.id
-                              }
-                              onClick={() =>
-                                updateOrderStatus(
-                                  order.id,
-                                  "READY",
-                                )
-                              }
-                            >
-                              Mark as ready →
-                            </button>
-                          )}
-
-                          {/* READY */}
-                          {order.status ===
-                            "READY" && (
-                            <button
-                              className="fx-button fx-button-dark fx-button-full"
-                              disabled={
-                                busyOrder ===
-                                order.id
-                              }
-                              onClick={() =>
-                                updateOrderStatus(
-                                  order.id,
-                                  "SERVED",
-                                )
-                              }
-                            >
-                              Mark as served ✓
-                            </button>
-                          )}
-                        </div>
-                      </article>
-                    ))
-                )}
-              </section>
-            </div>
-
-            {/* ===================================================
-                SECONDARY COLUMN
-            ==================================================== */}
-            <aside className="fx-secondary-column">
-              <section className="fx-section-heading">
-                <div>
-                  <p className="fx-kicker">
-                    CUSTOMER SUPPORT
-                  </p>
-
-                  <h2>
-                    Requests
-                  </h2>
-                </div>
-
-                <button
-                  className="fx-text-button"
-                  onClick={() =>
-                    go(
-                      `/k/${slug}/requests`,
-                    )
-                  }
-                >
-                  View all →
-                </button>
-              </section>
-
-              <section className="fx-request-list">
-                {requests.length === 0 ? (
-                  <div className="fx-empty-card fx-empty-card-small">
-                    <strong>
-                      No pending requests
-                    </strong>
-
-                    <p className="fx-muted">
-                      You are all caught up.
-                    </p>
-                  </div>
-                ) : (
-                  requests
-                    .slice(0, 5)
-                    .map((request) => (
-                      <article
-                        className="fx-request-card"
-                        key={request.id}
-                      >
-                        <div className="fx-request-icon">
-                          ♧
-                        </div>
-
-                        <div className="fx-request-content">
-                          <strong>
-                            {request.tables
-                              ?.name ||
-                              "Table"}
-                          </strong>
-
-                          <span>
-                            {
-                              requestLabels[
-                                request.type
-                              ]
-                            }
-                          </span>
-
-                          {request.message && (
-                            <small>
-                              {
-                                request.message
-                              }
-                            </small>
-                          )}
-                        </div>
-
-                        <div className="fx-request-actions">
-                          <span>
-                            {formatTime(
-                              request.created_at,
-                            )}
-                          </span>
-
-                          <button
-                            className="fx-button fx-button-dark"
-                            disabled={
-                              busyRequest ===
-                              request.id
-                            }
-                            onClick={() =>
-                              completeRequest(
-                                request.id,
-                              )
-                            }
-                          >
-                            Done
-                          </button>
-                        </div>
-                      </article>
-                    ))
-                )}
-              </section>
-
-              {/* =================================================
-                  SHIFT OVERVIEW
-              ================================================== */}
-              <section className="fx-overview-card">
-                <p className="fx-kicker">
-                  TODAY’S OVERVIEW
-                </p>
-
-                <h2>
-                  Stay on top of the shift
-                </h2>
-
-                <div className="fx-overview-metrics">
-                  <div>
-                    <strong>
-                      {orderCounts.today}
-                    </strong>
-
-                    <span>
-                      Orders today
-                    </span>
-                  </div>
-
-                  <div>
-                    <strong>
-                      {orders.length}
-                    </strong>
-
-                    <span>
-                      Open orders
-                    </span>
-                  </div>
-
-                  <div>
-                    <strong>
-                      {requests.length}
-                    </strong>
-
-                    <span>
-                      Open requests
-                    </span>
-                  </div>
-                </div>
-              </section>
-
-              {/* =================================================
-                  ORDER COUNT SUMMARY
-              ================================================== */}
-              <section className="fx-overview-card">
-                <p className="fx-kicker">
-                  BUSINESS OVERVIEW
-                </p>
-
-                <h2>
-                  Order activity
-                </h2>
-
-                <div className="fx-overview-metrics">
-                  <div>
-                    <strong>
-                      {orderCounts.week}
-                    </strong>
-
-                    <span>
-                      This week
-                    </span>
-                  </div>
-
-                  <div>
-                    <strong>
-                      {orderCounts.month}
-                    </strong>
-
-                    <span>
-                      This month
-                    </span>
-                  </div>
-
-                  <div>
-                    <strong>
-                      {orderCounts.overall}
-                    </strong>
-
-                    <span>
-                      All time
-                    </span>
-                  </div>
-                </div>
-              </section>
-            </aside>
-          </div>
         </div>
 
-        {/* =======================================================
-            MOBILE BOTTOM NAV
-        ======================================================== */}
-        <nav
-          className="fx-bottom-nav"
-          aria-label="Kitchen navigation"
-        >
+        {/* MOBILE BOTTOM NAV */}
+
+        <nav className="fx-mobile-bottom-nav">
           <button
+            type="button"
             className="active"
-            onClick={() =>
-              go(`/k/${slug}`)
-            }
+            onClick={() => go(`/k/${slug}`)}
           >
-            <span>⌂</span>
-            Dashboard
+            <Icon name="home" size={19} />
+            <span>Dashboard</span>
           </button>
 
           <button
-            onClick={() =>
-              go(`/k/${slug}/orders`)
-            }
+            type="button"
+            onClick={openOrders}
           >
-            <span>▤</span>
-            Orders
+            <Icon name="orders" size={19} />
+
+            <span>Orders</span>
+
+            {stats.newOrders > 0 && (
+              <b>{stats.newOrders}</b>
+            )}
           </button>
 
           <button
-            onClick={() =>
-              go(`/k/${slug}/requests`)
-            }
+            type="button"
+            onClick={openRequests}
           >
-            <span>♧</span>
-            Requests
+            <Icon name="bell" size={19} />
+
+            <span>Requests</span>
+
+            {stats.requests > 0 && (
+              <b>{stats.requests}</b>
+            )}
           </button>
 
           <button
-            onClick={() =>
-              go(`/k/${slug}/manage`)
-            }
+            type="button"
+            onClick={openTables}
           >
-            <span>▦</span>
-            Manage
+            <Icon name="table" size={19} />
+            <span>Tables</span>
           </button>
         </nav>
-      </div>
+      </section>
     </main>
+  );
+}
+
+/* ============================================================
+   NAVIGATION COMPONENT
+============================================================ */
+
+function NavigationSection({
+  title,
+  items,
+}: {
+  title: string;
+  items: Array<{
+    label: string;
+    icon: IconName;
+    active?: boolean;
+    badge?: number;
+    onClick: () => void;
+  }>;
+}) {
+  return (
+    <section className="fx-nav-section">
+      <span className="fx-nav-section-title">
+        {title}
+      </span>
+
+      <div className="fx-nav-items">
+        {items.map((item) => (
+          <button
+            type="button"
+            key={item.label}
+            className={`fx-nav-item ${
+              item.active ? "active" : ""
+            }`}
+            onClick={item.onClick}
+          >
+            <span className="fx-nav-item-icon">
+              <Icon
+                name={item.icon}
+                size={18}
+              />
+            </span>
+
+            <span className="fx-nav-item-label">
+              {item.label}
+            </span>
+
+            {!!item.badge && item.badge > 0 && (
+              <b className="fx-nav-badge">
+                {item.badge}
+              </b>
+            )}
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
