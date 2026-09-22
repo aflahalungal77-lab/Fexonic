@@ -5,7 +5,7 @@ import {
   useMemo,
   useState,
 } from "react";
-
+import "./customer.css"
 type CustomerParams = {
   slug: string;
   tableId: string;
