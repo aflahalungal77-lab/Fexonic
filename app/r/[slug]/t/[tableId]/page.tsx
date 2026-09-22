@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 type CustomerParams = {
   slug: string;
@@ -37,40 +41,54 @@ type RequestType =
   | "CALL_WAITER"
   | "OTHER";
 
+type PriceFilter =
+  | "ALL"
+  | "UNDER_200"
+  | "200_500"
+  | "OVER_500"
+  | "WITH_IMAGE";
+
 const requestOptions: {
   type: RequestType;
   icon: string;
   label: string;
+  description: string;
 }[] = [
   {
-    type: "TISSUE",
-    icon: "🧻",
-    label: "Tissue",
+    type: "WATER",
+    icon: "💧",
+    label: "Water",
+    description: "Ask for drinking water",
   },
   {
     type: "CUTLERY",
     icon: "🍴",
     label: "Cutlery",
+    description: "Spoon, fork or knife",
   },
   {
-    type: "WATER",
-    icon: "💧",
-    label: "Water",
+    type: "TISSUE",
+    icon: "🧻",
+    label: "Tissue",
+    description: "Ask for tissues",
   },
   {
     type: "EXTRA_FOOD",
     icon: "🍛",
     label: "Extra food",
+    description: "Need another serving",
   },
   {
     type: "CALL_WAITER",
-    icon: "🧑‍🍳",
+    icon: "👋",
     label: "Call waiter",
+    description: "Someone needs to assist",
   },
   {
     type: "OTHER",
     icon: "💬",
-    label: "Other",
+    label: "Something else",
+    description: "Tell us what you need",
   },
 ];
 
@@ -91,7 +109,8 @@ export default function Customer({
   const [cart, setCart] =
     useState<Record<string, number>>({});
 
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] =
+    useState("");
 
   const [loading, setLoading] =
     useState(true);
@@ -100,7 +119,10 @@ export default function Customer({
     useState(false);
 
   const [orderSuccess, setOrderSuccess] =
-    useState<{ id: string; total: number } | null>(null);
+    useState<{
+      id: string;
+      total: number;
+    } | null>(null);
 
   const [supportOpen, setSupportOpen] =
     useState(false);
@@ -117,6 +139,19 @@ export default function Customer({
   const [requestSent, setRequestSent] =
     useState(false);
 
+  const [search, setSearch] =
+    useState("");
+
+  const [priceFilter, setPriceFilter] =
+    useState<PriceFilter>("ALL");
+
+  const [filterOpen, setFilterOpen] =
+    useState(false);
+
+  /* =========================================================
+     PARAMS
+  ========================================================== */
+
   useEffect(() => {
     let mounted = true;
 
@@ -131,11 +166,14 @@ export default function Customer({
     };
   }, [params]);
 
+  /* =========================================================
+     LOAD MENU
+  ========================================================== */
+
   useEffect(() => {
     if (!p) return;
 
     const currentParams = p;
-
     let cancelled = false;
 
     async function loadMenu() {
@@ -143,17 +181,18 @@ export default function Customer({
         setLoading(true);
         setMsg("");
 
-const response = await fetch(
-  `/api/menu?slug=${encodeURIComponent(
-    currentParams.slug
-  )}&table=${encodeURIComponent(
-    currentParams.tableId
-  )}`,
-  {
-    method: "GET",
-    cache: "no-store",
-  }
-);
+        const response = await fetch(
+          `/api/menu?slug=${encodeURIComponent(
+            currentParams.slug
+          )}&table=${encodeURIComponent(
+            currentParams.tableId
+          )}`,
+          {
+            method: "GET",
+            cache: "no-store",
+          }
+        );
+
         const data =
           await response.json();
 
@@ -167,11 +206,17 @@ const response = await fetch(
           return;
         }
 
-        setRestaurant(data.restaurant);
-        setItems(data.items || []);
+        setRestaurant(
+          data.restaurant
+        );
+
+        setItems(
+          data.items || []
+        );
       } catch (error) {
         if (!cancelled) {
           console.error(error);
+
           setMsg(
             "Failed to load menu"
           );
@@ -190,16 +235,23 @@ const response = await fetch(
     };
   }, [p]);
 
+  /* =========================================================
+     CART
+  ========================================================== */
+
   function add(id: string) {
     setCart((current) => ({
       ...current,
-      [id]: (current[id] || 0) + 1,
+      [id]:
+        (current[id] || 0) + 1,
     }));
   }
 
   function remove(id: string) {
     setCart((current) => {
-      const next = { ...current };
+      const next = {
+        ...current,
+      };
 
       if (!next[id]) {
         return next;
@@ -215,47 +267,148 @@ const response = await fetch(
     });
   }
 
-  function total() {
-    return items.reduce(
-      (sum, item) =>
-        sum +
-        (cart[item.id] || 0) *
-          Number(item.price),
-      0
-    );
-  }
+  const itemCount = useMemo(
+    () =>
+      Object.values(cart).reduce(
+        (sum, quantity) =>
+          sum + quantity,
+        0
+      ),
+    [cart]
+  );
 
-  function cartCount() {
-    return Object.values(cart).reduce(
-      (sum, quantity) =>
-        sum + quantity,
-      0
-    );
-  }
+  const cartTotal = useMemo(
+    () =>
+      items.reduce(
+        (sum, item) =>
+          sum +
+          Number(item.price) *
+            (cart[item.id] || 0),
+        0
+      ),
+    [items, cart]
+  );
+
+  /* =========================================================
+     SEARCH + FILTER
+  ========================================================== */
+
+  const visibleItems = useMemo(() => {
+    const query =
+      search.trim().toLowerCase();
+
+    return items.filter((item) => {
+      const matchesSearch =
+        !query ||
+        item.name
+          .toLowerCase()
+          .includes(query) ||
+        item.description
+          ?.toLowerCase()
+          .includes(query);
+
+      let matchesFilter = true;
+
+      if (
+        priceFilter === "UNDER_200"
+      ) {
+        matchesFilter =
+          Number(item.price) < 200;
+      }
+
+      if (
+        priceFilter === "200_500"
+      ) {
+        matchesFilter =
+          Number(item.price) >= 200 &&
+          Number(item.price) <= 500;
+      }
+
+      if (
+        priceFilter === "OVER_500"
+      ) {
+        matchesFilter =
+          Number(item.price) > 500;
+      }
+
+      if (
+        priceFilter === "WITH_IMAGE"
+      ) {
+        matchesFilter =
+          Boolean(item.image?.url);
+      }
+
+      return (
+        matchesSearch &&
+        matchesFilter
+      );
+    });
+  }, [
+    items,
+    search,
+    priceFilter,
+  ]);
+
+  const activeFilterLabel =
+    priceFilter === "ALL"
+      ? "All items"
+      : priceFilter ===
+        "UNDER_200"
+      ? "Under ₹200"
+      : priceFilter ===
+        "200_500"
+      ? "₹200 – ₹500"
+      : priceFilter ===
+        "OVER_500"
+      ? "Above ₹500"
+      : "With photos";
+
+  /* =========================================================
+     SUCCESS SOUND
+  ========================================================== */
 
   function playSuccessSound() {
     try {
       const AudioContextClass =
         window.AudioContext ||
-        (window as typeof window & {
-          webkitAudioContext?: typeof AudioContext;
-        }).webkitAudioContext;
+        (
+          window as typeof window & {
+            webkitAudioContext?: typeof AudioContext;
+          }
+        ).webkitAudioContext;
 
-      if (!AudioContextClass) return;
+      if (!AudioContextClass) {
+        return;
+      }
 
-      const audioContext = new AudioContextClass();
-      const now = audioContext.currentTime;
+      const audioContext =
+        new AudioContextClass();
+
+      const now =
+        audioContext.currentTime;
 
       const notes = [
-        { frequency: 660, start: 0, duration: 0.11 },
-        { frequency: 880, start: 0.09, duration: 0.16 },
+        {
+          frequency: 660,
+          start: 0,
+          duration: 0.11,
+        },
+        {
+          frequency: 880,
+          start: 0.09,
+          duration: 0.16,
+        },
       ];
 
       notes.forEach((note) => {
-        const oscillator = audioContext.createOscillator();
-        const gain = audioContext.createGain();
+        const oscillator =
+          audioContext.createOscillator();
+
+        const gain =
+          audioContext.createGain();
 
         oscillator.type = "sine";
+
         oscillator.frequency.setValueAtTime(
           note.frequency,
           now + note.start
@@ -265,139 +418,150 @@ const response = await fetch(
           0.0001,
           now + note.start
         );
+
         gain.gain.exponentialRampToValueAtTime(
           0.08,
           now + note.start + 0.02
         );
+
         gain.gain.exponentialRampToValueAtTime(
           0.0001,
-          now + note.start + note.duration
+          now +
+            note.start +
+            note.duration
         );
 
         oscillator.connect(gain);
-        gain.connect(audioContext.destination);
 
-        oscillator.start(now + note.start);
+        gain.connect(
+          audioContext.destination
+        );
+
+        oscillator.start(
+          now + note.start
+        );
+
         oscillator.stop(
-          now + note.start + note.duration + 0.02
+          now +
+            note.start +
+            note.duration +
+            0.02
         );
       });
 
       window.setTimeout(() => {
-        audioContext.close().catch(() => {});
+        audioContext
+          .close()
+          .catch(() => {});
       }, 700);
     } catch {
-      // Some browsers block audio until a user gesture.
+      // Browser may block audio.
     }
   }
 
+  /* =========================================================
+     DEVICE KEY
+  ========================================================== */
+
   function getDeviceKey() {
-    const keyName = "fexonic_device_key";
-    let key = window.localStorage.getItem(keyName);
+    const keyName =
+      "fexonic_device_key";
+
+    let key =
+      window.localStorage.getItem(
+        keyName
+      );
+
     if (!key) {
       key = crypto.randomUUID();
-      window.localStorage.setItem(keyName, key);
+
+      window.localStorage.setItem(
+        keyName,
+        key
+      );
     }
+
     return key;
   }
 
-  async function order() {
-    if (
-      !restaurant ||
-      !p ||
-      ordering
-    ) {
-      return;
-    }
+  /* =========================================================
+     PLACE ORDER
+  ========================================================== */
 
-    const currentRestaurant =
-      restaurant;
+async function order() {
+  if (!restaurant || !p || ordering) return;
 
-    const currentParams = p;
+  const rows = items
+    .filter((item) => cart[item.id] > 0)
+    .map((item) => ({
+      menu_item_id: item.id,
+      quantity: cart[item.id],
+    }));
 
-    const rows = items
-      .filter(
-        (item) => cart[item.id]
-      )
-      .map((item) => ({
-        menu_item_id: item.id,
-        quantity: cart[item.id],
-      }));
+  if (rows.length === 0) {
+    setMsg("Add something to your cart first.");
+    return;
+  }
 
-    if (!rows.length) {
-      setMsg(
-        "Add something to your cart first."
-      );
-      return;
-    }
+  setOrdering(true);
+  setMsg("");
+
+  try {
+    const response = await fetch("/api/orders", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        restaurant_id: restaurant.id,
+        table_id: p.tableId,
+        items: rows,
+        device_key: getDeviceKey(),
+        device_name: "Customer Device",
+      }),
+      cache: "no-store",
+    });
+
+    const text = await response.text();
+
+    let data: any = {};
 
     try {
-      setOrdering(true);
-      setMsg("");
-
-      const response = await fetch(
-        "/api/orders",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            restaurant_id:
-              currentRestaurant.id,
-            table_id:
-              currentParams.tableId,
-            items: rows,
-            device_key: getDeviceKey(),
-            device_name: "Customer Device",
-          }),
-        }
-      );
-
-      const text =
-        await response.text();
-
-      let data: any = {};
-
-      try {
-        data = text
-          ? JSON.parse(text)
-          : {};
-      } catch {
-        throw new Error(
-          "Server returned an invalid response."
-        );
-      }
-
-      if (!response.ok) {
-        throw new Error(
-          data?.error ||
-            "Order failed"
-        );
-      }
-
-      setCart({});
-      setMsg("");
-      setOrderSuccess({
-        id: String(data.id),
-        total: Number(data.total ?? total()),
-      });
-      playSuccessSound();
-    } catch (error: any) {
-      console.error(
-        "Order error:",
-        error
-      );
-
-      setMsg(
-        error?.message ||
-          "Order failed"
-      );
-    } finally {
-      setOrdering(false);
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      throw new Error("Invalid server response.");
     }
+
+    if (!response.ok) {
+      throw new Error(
+        data?.error || "Could not place your order."
+      );
+    }
+
+    // Server confirmed the order.
+    setCart({});
+
+    setOrderSuccess({
+      id: String(data.id),
+      total: Number(data.total ?? cartTotal),
+    });
+
+    // Non-blocking success feedback
+    playSuccessSound();
+  } catch (error: any) {
+    console.error("Order error:", error);
+
+    setMsg(
+      error?.message || "Could not place your order."
+    );
+  } finally {
+    setOrdering(false);
   }
+}
+
+  /* =========================================================
+     SUPPORT
+  ========================================================== */
 
   function openSupport() {
     setSupportOpen(true);
@@ -425,7 +589,8 @@ const response = await fetch(
     }
 
     if (
-      selectedRequest === "OTHER" &&
+      selectedRequest ===
+        "OTHER" &&
       !customMessage.trim()
     ) {
       return;
@@ -434,25 +599,31 @@ const response = await fetch(
     try {
       setSendingRequest(true);
 
-      const response = await fetch(
-        "/api/requests",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            restaurant_id:
-              restaurant.id,
-            table_id: p.tableId,
-            type: selectedRequest,
-            message:
-              customMessage.trim() ||
-              null,
-          }),
-        }
-      );
+      const response =
+        await fetch(
+          "/api/requests",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              restaurant_id:
+                restaurant.id,
+
+              table_id:
+                p.tableId,
+
+              type:
+                selectedRequest,
+
+              message:
+                customMessage.trim() ||
+                null,
+            }),
+          }
+        );
 
       const text =
         await response.text();
@@ -499,21 +670,35 @@ const response = await fetch(
     }
   }
 
+  /* =========================================================
+     LOADING
+  ========================================================== */
+
   if (loading) {
     return (
-      <main className="customer-shell">
-        <div className="customer-loading">
-          <div className="customer-loading-mark">F</div>
-          <div className="loading-line loading-line-lg" />
-          <div className="loading-line" />
-          <div className="loading-card">
-            <div className="loading-image" />
-            <div className="loading-copy">
-              <div className="loading-line loading-line-sm" />
-              <div className="loading-line" />
+      <main className="fxc-customer">
+        <div className="fxc-loading">
+          <div className="fxc-loading-mark">
+            F
+          </div>
+
+          <div className="fxc-skeleton-title" />
+
+          <div className="fxc-skeleton-subtitle" />
+
+          <div className="fxc-skeleton-card">
+            <div className="fxc-skeleton-image" />
+
+            <div className="fxc-skeleton-copy">
+              <span />
+              <span />
+              <span />
             </div>
           </div>
-          <p>Preparing your menu…</p>
+
+          <p>
+            Preparing your menu…
+          </p>
         </div>
       </main>
     );
@@ -521,256 +706,763 @@ const response = await fetch(
 
   if (msg && !restaurant) {
     return (
-      <main className="customer-shell">
-        <div className="customer-unavailable">
-          <div className="status-icon">!</div>
-          <div className="eyebrow">FEXONIC</div>
-          <h1>Menu unavailable</h1>
+      <main className="fxc-customer">
+        <div className="fxc-unavailable">
+          <div className="fxc-error-icon">
+            !
+          </div>
+
+          <span className="fxc-kicker">
+            FEXONIC
+          </span>
+
+          <h1>
+            Menu unavailable
+          </h1>
+
           <p>{msg}</p>
         </div>
       </main>
     );
   }
 
-  const itemCount = cartCount();
-  const cartTotal = total();
-
   return (
-    <main className="customer-shell">
-      <header className="customer-header">
-        <div className="customer-header-inner">
-          <div className="customer-brand">
-            <span className="brand-dot" />
-            <span>{restaurant?.name || "FEXONIC"}</span>
+    <main className="fxc-customer">
+
+      {/* =====================================================
+          STICKY HEADER
+      ====================================================== */}
+
+      <header className="fxc-header">
+        <div className="fxc-header-inner">
+
+          <div className="fxc-brand">
+            <span className="fxc-brand-mark">
+              F
+            </span>
+
+            <div>
+              <strong>
+                {restaurant?.name ||
+                  "FEXONIC"}
+              </strong>
+
+              <span>
+                Digital ordering
+              </span>
+            </div>
           </div>
 
-          <div className="table-badge">
-            <span className="table-badge-dot" />
-            Table
-            <strong>{p?.tableId?.slice(0, 6) || "—"}</strong>
+          <div className="fxc-header-actions">
+
+            <div className="fxc-table-pill">
+              <span className="fxc-live-dot" />
+
+              <span>
+                TABLE
+              </span>
+
+              <strong>
+                {p?.tableId?.slice(
+                  0,
+                  6
+                ) || "—"}
+              </strong>
+            </div>
+
+<button
+  type="button"
+  className="fxc-help-button"
+  onClick={openSupport}
+  aria-label="Need something? Ask the waiter"
+>
+  <span className="fxc-help-icon">
+    ✦
+  </span>
+
+  <span className="fxc-help-copy">
+    <strong>Need something?</strong>
+    <small>Ask waiter</small>
+  </span>
+
+  <span className="fxc-help-arrow">
+    →
+  </span>
+</button>
+
           </div>
         </div>
       </header>
 
-      <section className="customer-hero">
-        <div className="customer-hero-inner">
-          <div className="eyebrow">DIGITAL MENU</div>
-          <h1>{restaurant?.name}</h1>
+      {/* =====================================================
+          HERO
+      ====================================================== */}
+
+      <section className="fxc-hero">
+        <div className="fxc-hero-inner">
+
+          <div className="fxc-hero-badge">
+            <span className="fxc-hero-dot" />
+            ORDER FROM YOUR TABLE
+          </div>
+
+          <h1>
+            {restaurant?.name}
+          </h1>
+
           <p>
             {restaurant?.description ||
-              "Choose your favourites and order directly from your table."}
+              "Browse the menu, choose your favourites and order in seconds."}
           </p>
 
-          <div className="hero-meta">
+          <div className="fxc-trust-row">
+
             <span>
-              <span className="meta-dot" />
-              Open for orders
+              <b>✓</b>
+              No app needed
             </span>
-            <span>•</span>
-            <span>Table service</span>
+
+            <span>
+              <b>✓</b>
+              Table-linked order
+            </span>
+
+            <span>
+              <b>✓</b>
+              Direct kitchen order
+            </span>
+
           </div>
+
         </div>
       </section>
 
-      <section className="customer-content">
-        <div className="menu-toolbar">
+      {/* =====================================================
+          MENU AREA
+      ====================================================== */}
+
+      <section className="fxc-content">
+
+        <div className="fxc-menu-intro">
+
           <div>
-            <div className="eyebrow">MENU</div>
-            <h2>What would you like?</h2>
+            <span className="fxc-kicker">
+              MENU
+            </span>
+
+            <h2>
+              What are you craving?
+            </h2>
+
+            <p>
+              Find something you like
+              and add it instantly.
+            </p>
           </div>
-          <span className="menu-count">
-            {items.length} {items.length === 1 ? "item" : "items"}
-          </span>
+
+          <div className="fxc-item-total">
+            <strong>
+              {items.length}
+            </strong>
+
+            <span>
+              {items.length === 1
+                ? "item"
+                : "items"}
+            </span>
+          </div>
+
         </div>
 
-        {items.length === 0 ? (
-          <div className="empty-menu">
-            <div className="empty-menu-icon">—</div>
-            <h3>Menu unavailable</h3>
-            <p>No items are available right now.</p>
+        {/* ===================================================
+            SEARCH + FILTER
+        ==================================================== */}
+
+        <div className="fxc-discovery">
+
+          <div className="fxc-search-box">
+
+            <span className="fxc-search-icon">
+              ⌕
+            </span>
+
+            <input
+              type="search"
+              value={search}
+              onChange={(event) =>
+                setSearch(
+                  event.target.value
+                )
+              }
+              placeholder="Search dishes..."
+              aria-label="Search menu"
+            />
+
+            {search && (
+              <button
+                type="button"
+                className="fxc-search-clear"
+                onClick={() =>
+                  setSearch("")
+                }
+                aria-label="Clear search"
+              >
+                ×
+              </button>
+            )}
+
           </div>
-        ) : (
-          <div className="customer-menu-grid">
-            {items.map((item, index) => {
-              const quantity = cart[item.id] || 0;
 
-              return (
-                <article className="customer-food-card" key={item.id}>
-                  <div className="food-image-wrap">
-                    {item.image?.url ? (
-                      <img
-                        className="foodimg"
-                        src={item.image.url}
-                        alt={item.image.alt || item.name}
-                        loading={index < 2 ? "eager" : "lazy"}
-                        decoding="async"
-                        fetchPriority={index === 0 ? "high" : "auto"}
-                      />
-                    ) : (
-                      <div className="food-placeholder">
-                        <span>FEXONIC</span>
-                      </div>
+          <button
+            type="button"
+            className={`fxc-filter-button ${
+              priceFilter !== "ALL"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              setFilterOpen(
+                (value) => !value
+              )
+            }
+          >
+            <span>☷</span>
+            <strong>
+              Filter
+            </strong>
+
+            {priceFilter !== "ALL" && (
+              <b>1</b>
+            )}
+          </button>
+
+        </div>
+
+        {/* ===================================================
+            FILTER PANEL
+        ==================================================== */}
+
+        {filterOpen && (
+          <div className="fxc-filter-panel">
+
+            <div className="fxc-filter-heading">
+              <div>
+                <span>
+                  FILTER MENU
+                </span>
+
+                <strong>
+                  Find your range
+                </strong>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setFilterOpen(false)
+                }
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="fxc-filter-options">
+
+              {[
+                {
+                  id: "ALL",
+                  label: "All items",
+                },
+                {
+                  id: "UNDER_200",
+                  label: "Under ₹200",
+                },
+                {
+                  id: "200_500",
+                  label: "₹200 – ₹500",
+                },
+                {
+                  id: "OVER_500",
+                  label: "Above ₹500",
+                },
+                {
+                  id: "WITH_IMAGE",
+                  label: "With photos",
+                },
+              ].map((option) => {
+                const active =
+                  priceFilter ===
+                  option.id;
+
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={
+                      active
+                        ? "active"
+                        : ""
+                    }
+                    onClick={() => {
+                      setPriceFilter(
+                        option.id as PriceFilter
+                      );
+
+                      setFilterOpen(
+                        false
+                      );
+                    }}
+                  >
+                    <span>
+                      {option.label}
+                    </span>
+
+                    {active && (
+                      <b>✓</b>
                     )}
+                  </button>
+                );
+              })}
 
-                    {quantity > 0 && (
-                      <div className="food-selected-badge">
-                        {quantity} in cart
-                      </div>
-                    )}
-                  </div>
+            </div>
 
-                  <div className="customer-food-body">
-                    <div className="food-title-row">
-                      <div>
-                        <h3>{item.name}</h3>
-                        {item.description && (
-                          <p>{item.description}</p>
-                        )}
-                      </div>
-                      <strong>₹{item.price}</strong>
-                    </div>
-
-                    {quantity === 0 ? (
-                      <button
-                        className="food-add-btn"
-                        type="button"
-                        onClick={() => add(item.id)}
-                        aria-label={`Add ${item.name} to cart`}
-                      >
-                        <span>Add to cart</span>
-                        <span className="add-plus">+</span>
-                      </button>
-                    ) : (
-                      <div className="quantity-control">
-                        <button
-                          type="button"
-                          onClick={() => remove(item.id)}
-                          aria-label={`Remove one ${item.name}`}
-                        >
-                          −
-                        </button>
-                        <strong>{quantity}</strong>
-                        <button
-                          type="button"
-                          onClick={() => add(item.id)}
-                          aria-label={`Add one ${item.name}`}
-                        >
-                          +
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
           </div>
         )}
 
-        <button
-          type="button"
-          className="support-card"
-          onClick={openSupport}
-        >
-          <span className="support-icon">✦</span>
-          <span className="support-copy">
-            <strong>Need something?</strong>
-            <small>Ask the waiter for water, cutlery, tissue & more.</small>
-          </span>
-          <span className="support-arrow">→</span>
-        </button>
-      </section>
+        {/* ACTIVE FILTER */}
 
-      {itemCount > 0 && (
-        <div className="cart-dock">
-          <div className="cart-dock-inner">
-            <div className="cart-summary">
-              <span className="cart-item-count">{itemCount}</span>
-              <div>
-                <strong>Your order</strong>
-                <small>₹{cartTotal}</small>
-              </div>
-            </div>
+        {priceFilter !== "ALL" && (
+          <div className="fxc-active-filter">
+
+            <span>
+              Showing:
+            </span>
+
+            <strong>
+              {activeFilterLabel}
+            </strong>
 
             <button
-              className="place-order-btn"
               type="button"
-              onClick={order}
-              disabled={ordering}
+              onClick={() =>
+                setPriceFilter(
+                  "ALL"
+                )
+              }
             >
-              <span>{ordering ? "Placing order…" : "Place order"}</span>
-              <span className="place-order-arrow">→</span>
+              Clear
+            </button>
+
+          </div>
+        )}
+
+        {/* ===================================================
+            MENU
+        ==================================================== */}
+
+        {items.length === 0 ? (
+          <div className="fxc-empty">
+            <div className="fxc-empty-icon">
+              —
+            </div>
+
+            <span className="fxc-kicker">
+              MENU
+            </span>
+
+            <h3>
+              Menu unavailable
+            </h3>
+
+            <p>
+              No items are available
+              right now.
+            </p>
+          </div>
+        ) : visibleItems.length === 0 ? (
+          <div className="fxc-empty">
+            <div className="fxc-empty-icon">
+              ⌕
+            </div>
+
+            <span className="fxc-kicker">
+              NO MATCH
+            </span>
+
+            <h3>
+              Nothing found
+            </h3>
+
+            <p>
+              Try another search or
+              filter.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setPriceFilter(
+                  "ALL"
+                );
+              }}
+            >
+              Show all items
             </button>
           </div>
+        ) : (
+          <div className="fxc-food-grid">
+
+            {visibleItems.map(
+              (item, index) => {
+                const quantity =
+                  cart[item.id] || 0;
+
+                return (
+                  <article
+                    key={item.id}
+                    className={`fxc-food-card ${
+                      quantity > 0
+                        ? "selected"
+                        : ""
+                    }`}
+                  >
+
+                    <div className="fxc-food-image">
+
+                      {item.image?.url ? (
+                        <img
+                          src={
+                            item.image.url
+                          }
+                          alt={
+                            item.image
+                              .alt ||
+                            item.name
+                          }
+                          loading={
+                            index < 3
+                              ? "eager"
+                              : "lazy"
+                          }
+                          decoding="async"
+                          fetchPriority={
+                            index === 0
+                              ? "high"
+                              : "auto"
+                          }
+                        />
+                      ) : (
+                        <div className="fxc-food-placeholder">
+                          <span>
+                            F
+                          </span>
+                        </div>
+                      )}
+
+                      {quantity > 0 && (
+                        <div className="fxc-selected">
+                          <span>✓</span>
+                          {quantity}
+                        </div>
+                      )}
+
+                    </div>
+
+                    <div className="fxc-food-content">
+
+                      <div className="fxc-food-heading">
+
+                        <div>
+                          <h3>
+                            {item.name}
+                          </h3>
+
+                          {item.description && (
+                            <p>
+                              {
+                                item.description
+                              }
+                            </p>
+                          )}
+                        </div>
+
+                        <strong>
+                          ₹
+                          {Number(
+                            item.price
+                          ).toFixed(0)}
+                        </strong>
+
+                      </div>
+
+                      {quantity ===
+                      0 ? (
+                        <button
+                          type="button"
+                          className="fxc-add"
+                          onClick={() =>
+                            add(
+                              item.id
+                            )
+                          }
+                        >
+                          <span>
+                            Add
+                          </span>
+
+                          <b>
+                            +
+                          </b>
+                        </button>
+                      ) : (
+                        <div className="fxc-quantity">
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              remove(
+                                item.id
+                              )
+                            }
+                            aria-label={`Remove one ${item.name}`}
+                          >
+                            −
+                          </button>
+
+                          <div>
+                            <strong>
+                              {quantity}
+                            </strong>
+
+                            <span>
+                              added
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              add(
+                                item.id
+                              )
+                            }
+                            aria-label={`Add one ${item.name}`}
+                          >
+                            +
+                          </button>
+
+                        </div>
+                      )}
+
+                    </div>
+
+                  </article>
+                );
+              }
+            )}
+
+          </div>
+        )}
+
+        <div className="fxc-bottom-space" />
+
+      </section>
+
+      {/* =====================================================
+          STICKY CART
+      ====================================================== */}
+
+      {itemCount > 0 && (
+  <div className="fxc-cart-bar">
+    <div className="fxc-cart-inner">
+
+      <div className="fxc-cart-info">
+        <div className="fxc-cart-count">
+          {itemCount}
         </div>
-      )}
+
+        <div className="fxc-cart-summary">
+          <span>
+            {itemCount === 1
+              ? "1 item selected"
+              : `${itemCount} items selected`}
+          </span>
+
+          <strong>
+            ₹{cartTotal.toFixed(0)}
+          </strong>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className="fxc-order-button"
+        onClick={order}
+        disabled={ordering}
+      >
+        {ordering ? (
+          <>
+            <span className="fxc-order-spinner" />
+            <span>Placing order...</span>
+          </>
+        ) : (
+          <>
+            <span>Place order</span>
+            <b>→</b>
+          </>
+        )}
+      </button>
+
+    </div>
+
+    <div className="fxc-cart-trust">
+      <span>✓</span>
+      Secure table-linked ordering · Sent directly to kitchen
+    </div>
+  </div>
+)}
+      {/* =====================================================
+          SUPPORT MODAL
+      ====================================================== */}
 
       {supportOpen && (
         <div
-          className="modal-backdrop"
+          className="fxc-modal-backdrop"
           onClick={closeSupport}
-          role="presentation"
         >
           <div
-            className="support-modal"
-            onClick={(event) => event.stopPropagation()}
+            className="fxc-support-modal"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+            role="dialog"
+            aria-modal="true"
           >
+
             {requestSent ? (
-              <div className="success-state compact-success">
-                <div className="success-check">✓</div>
-                <div className="eyebrow">REQUEST SENT</div>
-                <h2>Waiter notified</h2>
-                <p>Your request has been sent to the kitchen.</p>
+              <div className="fxc-request-success">
+
+                <div className="fxc-success-icon">
+                  ✓
+                </div>
+
+                <span className="fxc-kicker">
+                  REQUEST SENT
+                </span>
+
+                <h2>
+                  Waiter notified
+                </h2>
+
+                <p>
+                  Your request has been
+                  sent to the kitchen.
+                </p>
+
               </div>
             ) : (
               <>
-                <div className="modal-head">
+
+                <div className="fxc-modal-top">
+
                   <div>
-                    <div className="eyebrow">TABLE SUPPORT</div>
-                    <h2>Need something?</h2>
+                    <span className="fxc-modal-label">
+                      TABLE SUPPORT
+                    </span>
+
+                    <h2>
+                      Need something?
+                    </h2>
+
+                    <p>
+                      Choose what you need.
+                      We'll notify the waiter.
+                    </p>
                   </div>
+
                   <button
                     type="button"
-                    className="modal-close"
-                    onClick={closeSupport}
-                    aria-label="Close support"
+                    className="fxc-modal-close"
+                    onClick={
+                      closeSupport
+                    }
+                    aria-label="Close"
                   >
                     ×
                   </button>
+
                 </div>
 
-                <p className="modal-subtitle">
-                  Choose what you need. The waiter will be notified.
-                </p>
+                <div className="fxc-request-grid">
 
-                <div className="request-grid">
-                  {requestOptions.map((option) => {
-                    const active = selectedRequest === option.type;
+                  {requestOptions.map(
+                    (option) => {
+                      const active =
+                        selectedRequest ===
+                        option.type;
 
-                    return (
-                      <button
-                        key={option.type}
-                        type="button"
-                        className={`request-option ${
-                          active ? "active" : ""
-                        }`}
-                        onClick={() => setSelectedRequest(option.type)}
-                      >
-                        <span className="request-option-icon">
-                          {option.icon}
-                        </span>
-                        <span>{option.label}</span>
-                        {active && <span className="request-check">✓</span>}
-                      </button>
-                    );
-                  })}
+                      return (
+                        <button
+                          key={
+                            option.type
+                          }
+                          type="button"
+                          className={`fxc-request ${
+                            active
+                              ? "active"
+                              : ""
+                          }`}
+                          onClick={() =>
+                            setSelectedRequest(
+                              option.type
+                            )
+                          }
+                        >
+                          <span className="fxc-request-icon">
+                            {
+                              option.icon
+                            }
+                          </span>
+
+                          <span className="fxc-request-copy">
+                            <strong>
+                              {
+                                option.label
+                              }
+                            </strong>
+
+                            <small>
+                              {
+                                option.description
+                              }
+                            </small>
+                          </span>
+
+                          <span className="fxc-request-check">
+                            {active
+                              ? "✓"
+                              : "›"}
+                          </span>
+                        </button>
+                      );
+                    }
+                  )}
+
                 </div>
 
-                {selectedRequest === "OTHER" && (
+                {selectedRequest ===
+                  "OTHER" && (
                   <textarea
-                    className="support-textarea"
-                    value={customMessage}
+                    className="fxc-support-input"
+                    value={
+                      customMessage
+                    }
                     onChange={(event) =>
-                      setCustomMessage(event.target.value)
+                      setCustomMessage(
+                        event.target
+                          .value
+                      )
                     }
                     placeholder="Tell the waiter what you need…"
                     maxLength={500}
@@ -780,53 +1472,147 @@ const response = await fetch(
 
                 <button
                   type="button"
-                  className="send-request-btn"
+                  className="fxc-send-request"
                   disabled={
                     !selectedRequest ||
                     sendingRequest ||
-                    (selectedRequest === "OTHER" &&
+                    (selectedRequest ===
+                      "OTHER" &&
                       !customMessage.trim())
                   }
-                  onClick={sendSupportRequest}
+                  onClick={
+                    sendSupportRequest
+                  }
                 >
-                  {sendingRequest ? "Sending…" : "Send request"}
+                  {sendingRequest
+                    ? "Sending request…"
+                    : "Notify waiter"}
+
+                  <span>
+                    →
+                  </span>
                 </button>
+
+                <div className="fxc-support-note">
+                  <span>✓</span>
+                  <p>
+                    Your request is linked
+                    to Table{" "}
+                    <strong>
+                      {p?.tableId?.slice(
+                        0,
+                        6
+                      )}
+                    </strong>
+                  </p>
+                </div>
+
               </>
             )}
+
           </div>
         </div>
       )}
 
+      {/* =====================================================
+          ORDER SUCCESS
+      ====================================================== */}
+
       {orderSuccess && (
-        <div className="modal-backdrop order-success-backdrop">
-          <div className="order-success-modal" role="dialog" aria-modal="true">
-            <div className="success-orbit">
-              <div className="success-check">✓</div>
+        <div className="fxc-modal-backdrop">
+
+          <div
+            className="fxc-order-success"
+            role="dialog"
+            aria-modal="true"
+          >
+
+            <div className="fxc-success-ring">
+              <div>
+                ✓
+              </div>
             </div>
 
-            <div className="eyebrow">ORDER CONFIRMED</div>
-            <h2>Order placed!</h2>
+            <span className="fxc-kicker">
+              ORDER CONFIRMED
+            </span>
+
+            <h2>
+              You're all set.
+            </h2>
+
             <p>
-              Your order has been sent to the kitchen. Sit back and relax.
+              Your order has been
+              sent to the kitchen.
+              Sit back and relax.
             </p>
 
-            <div className="order-success-summary">
-              <span>
-                Order <strong>#{orderSuccess.id.slice(0, 8)}</strong>
-              </span>
-              <strong>₹{orderSuccess.total}</strong>
+            <div className="fxc-success-details">
+
+              <div>
+                <span>
+                  Order
+                </span>
+
+                <strong>
+                  #
+                  {orderSuccess.id.slice(
+                    0,
+                    8
+                  )}
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Total
+                </span>
+
+                <strong>
+                  ₹
+                  {orderSuccess.total.toFixed(
+                    0
+                  )}
+                </strong>
+              </div>
+
             </div>
 
             <button
               type="button"
-              className="success-done-btn"
-              onClick={() => setOrderSuccess(null)}
+              className="fxc-success-done"
+              onClick={() =>
+                setOrderSuccess(
+                  null
+                )
+              }
             >
-              Done
+              Continue
             </button>
+
           </div>
+
         </div>
       )}
+
+      {/* ERROR TOAST */}
+
+      {msg && restaurant && (
+        <div className="fxc-error-toast">
+          <span>!</span>
+          <p>{msg}</p>
+
+          <button
+            type="button"
+            onClick={() =>
+              setMsg("")
+            }
+          >
+            ×
+          </button>
+        </div>
+      )}
+
     </main>
   );
 }
