@@ -589,64 +589,51 @@ export default function KitchenDashboard({
         </div>
 
         <div className="fx-drawer-scroll">
-          <NavigationSection
-            title="WORKSPACE"
-            items={[
-              {
-                label: "Dashboard",
-                icon: "home",
-                active: true,
-                onClick: () => go(`/k/${slug}`),
-              },
-              {
-                label: "Orders",
-                icon: "orders",
-                badge: stats.newOrders,
-                onClick: openOrders,
-              },
-              {
-                label: "Requests",
-                icon: "bell",
-                badge: stats.requests,
-                onClick: openRequests,
-              },
-              {
-                label: "Manage",
-                icon: "table",
-                onClick: ManagePage,
-              },
-            ]}
-          />
+<NavigationSection
+  title="WORKSPACE"
+  items={[
+    {
+      label: "Dashboard",
+      icon: "home",
+      active: true,
+      onClick: () => go(`/k/${slug}`),
+    },
+    {
+      label: "Orders",
+      icon: "orders",
+      badge: stats.newOrders,
+      onClick: openOrders,
+    },
+    {
+      label: "Requests",
+      icon: "bell",
+      badge: stats.requests,
+      onClick: openRequests,
+    },
+  ]}
+/>
 
-          <NavigationSection
-            title="MANAGEMENT"
-            items={[
-              {
-                label: "Menu",
-                icon: "menu",
-                onClick: openTables,
-              },
-              {
-                label: "Tables & QR",
-                icon: "qr",
-                onClick: openTables,
-              },
+<NavigationSection
+  title="MANAGEMENT"
+  items={[
+    {
+      label: "Manage",
+      icon: "qr",
+      onClick: openTables,
+    },
+  ]}
+/>
 
-            ]}
-          />
-
-          <NavigationSection
-            title="BUSINESS"
-            items={[
-
-              {
-                label: "Order History",
-                icon: "history",
-                onClick: openOrders,
-              },
-
-            ]}
-          />
+<NavigationSection
+  title="BUSINESS"
+  items={[
+    {
+      label: "Order History",
+      icon: "history",
+      onClick: openOrders,
+    },
+  ]}
+/>
         </div>
 
         <div className="fx-drawer-profile">
@@ -685,63 +672,50 @@ export default function KitchenDashboard({
 
         <div className="fx-desktop-scroll">
           <NavigationSection
-            title="WORKSPACE"
-            items={[
-              {
-                label: "Dashboard",
-                icon: "home",
-                active: true,
-                onClick: () => go(`/k/${slug}`),
-              },
-              {
-                label: "Orders",
-                icon: "orders",
-                badge: stats.newOrders,
-                onClick: openOrders,
-              },
-              {
-                label: "Requests",
-                icon: "bell",
-                badge: stats.requests,
-                onClick: openRequests,
-              },
-              {
-                label: "Manage",
-                icon: "table",
-                onClick: ManagePage,
-              },
-            ]}
-          />
+  title="WORKSPACE"
+  items={[
+    {
+      label: "Dashboard",
+      icon: "home",
+      active: true,
+      onClick: () => go(`/k/${slug}`),
+    },
+    {
+      label: "Orders",
+      icon: "orders",
+      badge: stats.newOrders,
+      onClick: openOrders,
+    },
+    {
+      label: "Requests",
+      icon: "bell",
+      badge: stats.requests,
+      onClick: openRequests,
+    },
+  ]}
+/>
 
-          <NavigationSection
-            title="MANAGEMENT"
-            items={[
-              {
-                label: "Menu",
-                icon: "menu",
-                onClick: openTables,
-              },
-              {
-                label: "Tables & QR",
-                icon: "qr",
-                onClick: openTables,
-              },
-  
-            ]}
-          />
+<NavigationSection
+  title="MANAGEMENT"
+  items={[
+    {
+      label: "Manage",
+      icon: "qr",
+      onClick: openTables,
+    },
+  ]}
+/>
 
-          <NavigationSection
-            title="BUSINESS"
-            items={[
-
-              {
-                label: "Order History",
-                icon: "history",
-                onClick: openOrders,
-              },
-
-            ]}
-          />
+<NavigationSection
+  title="BUSINESS"
+  items={[
+    {
+      label: "Order History",
+      icon: "history",
+      onClick: openOrders,
+    },
+  ]}
+/>
         </div>
 
         <div className="fx-desktop-profile">
