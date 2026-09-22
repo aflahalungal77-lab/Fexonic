@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase";
+import ManagePage from "./manage/page";
 
 type OrderStatus =
   | "NEW"
@@ -610,9 +611,9 @@ export default function KitchenDashboard({
                 onClick: openRequests,
               },
               {
-                label: "Tables",
+                label: "Manage",
                 icon: "table",
-                onClick: openTables,
+                onClick: ManagePage,
               },
             ]}
           />
@@ -630,37 +631,20 @@ export default function KitchenDashboard({
                 icon: "qr",
                 onClick: openTables,
               },
-              {
-                label: "Staff",
-                icon: "staff",
-                onClick: () => {},
-              },
-              {
-                label: "Settings",
-                icon: "settings",
-                onClick: () => {},
-              },
+
             ]}
           />
 
           <NavigationSection
             title="BUSINESS"
             items={[
-              {
-                label: "Reports",
-                icon: "reports",
-                onClick: () => {},
-              },
+
               {
                 label: "Order History",
                 icon: "history",
                 onClick: openOrders,
               },
-              {
-                label: "Feedback",
-                icon: "feedback",
-                onClick: () => {},
-              },
+
             ]}
           />
         </div>
@@ -722,9 +706,9 @@ export default function KitchenDashboard({
                 onClick: openRequests,
               },
               {
-                label: "Tables",
+                label: "Manage",
                 icon: "table",
-                onClick: openTables,
+                onClick: ManagePage,
               },
             ]}
           />
@@ -742,37 +726,20 @@ export default function KitchenDashboard({
                 icon: "qr",
                 onClick: openTables,
               },
-              {
-                label: "Staff",
-                icon: "staff",
-                onClick: () => {},
-              },
-              {
-                label: "Settings",
-                icon: "settings",
-                onClick: () => {},
-              },
+  
             ]}
           />
 
           <NavigationSection
             title="BUSINESS"
             items={[
-              {
-                label: "Reports",
-                icon: "reports",
-                onClick: () => {},
-              },
+
               {
                 label: "Order History",
                 icon: "history",
                 onClick: openOrders,
               },
-              {
-                label: "Feedback",
-                icon: "feedback",
-                onClick: () => {},
-              },
+
             ]}
           />
         </div>

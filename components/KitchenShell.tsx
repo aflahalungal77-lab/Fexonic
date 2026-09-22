@@ -245,7 +245,7 @@ export default function KitchenShell({
     },
     {
       key: "manage" as const,
-      label: "Tables",
+      label: "Manage",
       icon: "tables" as IconName,
       path: `/k/${slug}/manage`,
     },
