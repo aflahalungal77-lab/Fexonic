@@ -1,47 +1,53 @@
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { NextRequest } from "next/server";
 
-function getAdminSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!url || !key) {
-    throw new Error(
-      "SUPABASE_SERVICE_ROLE_KEY is missing"
-    );
-  }
+if (!supabaseUrl || !serviceRoleKey) {
+  throw new Error("Missing Supabase environment variables");
+}
 
-  return createClient(url, key, {
+const supabase = createClient(
+  supabaseUrl,
+  serviceRoleKey,
+  {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
-  });
-}
+  }
+);
 
-// =====================================================
-// GET
-// =====================================================
+/* =========================================================
+   GET
+   ========================================================= */
 
-export async function GET(req: NextRequest) {
+export async function GET(
+  request: NextRequest
+) {
   try {
+    const { searchParams } =
+      new URL(request.url);
+
     const slug =
-      req.nextUrl.searchParams.get("slug");
+      searchParams.get("slug")?.trim();
 
     if (!slug) {
-      return Response.json(
+      return NextResponse.json(
         {
-          error: "Restaurant slug is required",
+          error:
+            "Restaurant slug is required",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
-    const supabase = getAdminSupabase();
-
-    // =================================================
-    // RESTAURANT
-    // =================================================
+    /* =====================================================
+       RESTAURANT
+       ===================================================== */
 
     const {
       data: restaurant,
@@ -49,111 +55,51 @@ export async function GET(req: NextRequest) {
     } = await supabase
       .from("restaurants")
       .select(
-        "id,name,slug,is_active"
+        "id, name, slug, is_active"
       )
       .eq("slug", slug)
-      .single();
+      .maybeSingle();
 
-    if (restaurantError || !restaurant) {
-      return Response.json(
-        {
-          error: "Restaurant not found",
-        },
-        { status: 404 }
-      );
-    }
-
-    // =================================================
-    // PERSISTENT CUSTOMER ORDER COUNT
-    //
-    // IMPORTANT:
-    // This reads ALL historical orders.
-    //
-    // Done / CLOSED orders are included.
-    //
-    // Same customer ordering multiple times
-    // counts as ONE customer.
-    // =================================================
-
-    const {
-      data: historicalOrders,
-      error: historicalOrdersError,
-    } = await supabase
-      .from("orders")
-      .select(
-        `
-        id,
-        customer_slot_id
-        `
-      )
-      .eq(
-        "restaurant_id",
-        restaurant.id
-      )
-      .not(
-        "customer_slot_id",
-        "is",
-        null
-      );
-
-    if (historicalOrdersError) {
+    if (restaurantError) {
       console.error(
-        "Historical customer orders query error:",
-        historicalOrdersError
+        "Restaurant lookup error:",
+        restaurantError
       );
 
-      return Response.json(
+      return NextResponse.json(
         {
           error:
-            "Failed to load customer order count",
+            "Failed to load restaurant",
         },
-        { status: 500 }
+        {
+          status: 500,
+        }
       );
     }
 
-    // =================================================
-    // UNIQUE CUSTOMERS
-    // =================================================
-
-    const uniqueCustomerIds =
-      new Set<string>();
-
-    for (
-      const order of
-        historicalOrders || []
-    ) {
-      if (
-        order.customer_slot_id
-      ) {
-        uniqueCustomerIds.add(
-          order.customer_slot_id
-        );
-      }
+    if (!restaurant) {
+      return NextResponse.json(
+        {
+          error:
+            "Restaurant not found",
+        },
+        {
+          status: 404,
+        }
+      );
     }
 
-    const customerOrderCount =
-      uniqueCustomerIds.size;
-
-    // =================================================
-    // ONLY OPEN BILLING SESSIONS
-    // =================================================
+    /* =====================================================
+       ACTIVE BILLING SESSIONS
+       ===================================================== */
 
     const {
-      data: sessions,
-      error: sessionsError,
+      data: billingSessions,
+      error: billingError,
     } = await supabase
       .from("billing_sessions")
       .select(
-        `
-        id,
-        table_id,
-        status,
-        created_at,
-        tables (
-          id,
-          name
-        )
-        `
+        "id, restaurant_id, table_id, status, created_at, closed_at"
       )
       .eq(
         "restaurant_id",
@@ -162,246 +108,271 @@ export async function GET(req: NextRequest) {
       .eq(
         "status",
         "OPEN"
-      )
-      .order(
-        "created_at",
-        {
-          ascending: false,
-        }
       );
 
-    if (sessionsError) {
+    if (billingError) {
       console.error(
-        "Billing sessions query error:",
-        sessionsError
+        "Billing sessions error:",
+        billingError
       );
 
-      return Response.json(
+      return NextResponse.json(
         {
           error:
             "Failed to load billing sessions",
         },
-        { status: 500 }
+        {
+          status: 500,
+        }
       );
     }
 
     const sessionIds =
-      (sessions || []).map(
-        (session: any) =>
+      (billingSessions || []).map(
+        (session) =>
           session.id
       );
 
-    // =================================================
-    // NO OPEN SESSIONS
-    // =================================================
+    /* =====================================================
+       ACTIVE ORDERS
+       ===================================================== */
 
-    if (sessionIds.length === 0) {
-      return Response.json(
-        {
-          restaurant,
+    let orders: any[] = [];
 
-          orders: [],
-
-          customerOrderCount,
-        },
-        {
-          status: 200,
-          headers: {
-            "Cache-Control":
-              "no-store",
-          },
-        }
-      );
-    }
-
-    // =================================================
-    // OPEN SESSION ORDERS
-    // =================================================
-
-    const {
-      data: orders,
-      error: ordersError,
-    } = await supabase
-      .from("orders")
-      .select(
-        `
-        id,
-        restaurant_id,
-        table_id,
-        customer_slot_id,
-        device_id,
-        billing_session_id,
-        total,
-        status,
-        created_at,
-
-        tables (
+    if (sessionIds.length > 0) {
+      const {
+        data,
+        error: ordersError,
+      } = await supabase
+        .from("orders")
+        .select(`
           id,
-          name
-        ),
+          restaurant_id,
+          table_id,
+          customer_slot_id,
+          device_id,
+          billing_session_id,
+          total,
+          status,
+          created_at,
 
-        customer_slots (
-          id,
-          slot_code,
-          label,
-          is_active
-        ),
+          tables (
+            id,
+            name
+          ),
 
-        devices (
-          id,
-          name,
-          device_key
-        ),
+          customer_slots (
+            id,
+            slot_code,
+            label,
+            is_active
+          ),
 
-        order_items (
-          id,
-          menu_item_id,
-          name,
-          price,
-          quantity
+          devices (
+            id,
+            name,
+            device_key
+          ),
+
+          order_items (
+            id,
+            name,
+            price,
+            quantity
+          )
+        `)
+        .eq(
+          "restaurant_id",
+          restaurant.id
         )
-        `
-      )
-      .eq(
-        "restaurant_id",
-        restaurant.id
-      )
-      .in(
-        "billing_session_id",
-        sessionIds
-      )
-      .order(
-        "created_at",
-        {
-          ascending: false,
-        }
-      );
+        .in(
+          "billing_session_id",
+          sessionIds
+        )
+        .order(
+          "created_at",
+          {
+            ascending: true,
+          }
+        );
 
-    if (ordersError) {
-      console.error(
-        "Order details query error:",
-        ordersError
-      );
+      if (ordersError) {
+        console.error(
+          "Orders query error:",
+          ordersError
+        );
 
-      return Response.json(
-        {
-          error:
-            "Failed to load orders",
-        },
-        { status: 500 }
-      );
+        return NextResponse.json(
+          {
+            error:
+              "Failed to load orders",
+          },
+          {
+            status: 500,
+          }
+        );
+      }
+
+      orders = data || [];
     }
 
-    // =================================================
-    // NORMALIZE
-    // =================================================
+    /* =====================================================
+       NORMALIZE ORDERS
+       ===================================================== */
 
     const normalizedOrders =
-      (orders || []).map(
-        (order: any) => {
-          const customerSlot =
+      orders.map(
+        (order) => ({
+          id: order.id,
+
+          table_id:
+            order.table_id,
+
+          customer_slot_id:
+            order.customer_slot_id ||
+            null,
+
+          device_id:
+            order.device_id ||
+            null,
+
+          billing_session_id:
+            order.billing_session_id,
+
+          total:
+            Number(
+              order.total || 0
+            ),
+
+          status:
+            order.status,
+
+          created_at:
+            order.created_at,
+
+          table:
+            Array.isArray(
+              order.tables
+            )
+              ? order.tables[0] ||
+                null
+              : order.tables ||
+                null,
+
+          customer:
             Array.isArray(
               order.customer_slots
             )
               ? order.customer_slots[0] ||
                 null
               : order.customer_slots ||
-                null;
+                null,
 
-          return {
-            id: order.id,
+          device:
+            Array.isArray(
+              order.devices
+            )
+              ? order.devices[0] ||
+                null
+              : order.devices ||
+                null,
 
-            table_id:
-              order.table_id,
+          order_items:
+            (order.order_items ||
+              []).map(
+              (item: any) => ({
+                id:
+                  item.id,
 
-            customer_slot_id:
-              order.customer_slot_id,
+                name:
+                  item.name,
 
-            device_id:
-              order.device_id,
+                price:
+                  Number(
+                    item.price ||
+                      0
+                  ),
 
-            billing_session_id:
-              order.billing_session_id,
-
-            total:
-              Number(
-                order.total || 0
-              ),
-
-            status:
-              order.status,
-
-            created_at:
-              order.created_at,
-
-            table:
-              Array.isArray(
-                order.tables
-              )
-                ? order.tables[0] ||
-                  null
-                : order.tables ||
-                  null,
-
-            customer:
-              customerSlot
-                ? {
-                    id:
-                      customerSlot.id,
-
-                    slot_code:
-                      customerSlot.slot_code,
-
-                    label:
-                      customerSlot.label,
-
-                    is_active:
-                      customerSlot.is_active,
-                  }
-                : null,
-
-            device:
-              Array.isArray(
-                order.devices
-              )
-                ? order.devices[0] ||
-                  null
-                : order.devices ||
-                  null,
-
-            order_items:
-              Array.isArray(
-                order.order_items
-              )
-                ? order.order_items.map(
-                    (item: any) => ({
-                      id:
-                        item.id,
-
-                      name:
-                        item.name,
-
-                      price:
-                        Number(
-                          item.price || 0
-                        ),
-
-                      quantity:
-                        Number(
-                          item.quantity || 0
-                        ),
-                    })
-                  )
-                : [],
-          };
-        }
+                quantity:
+                  Number(
+                    item.quantity ||
+                      0
+                  ),
+              })
+            ),
+        })
       );
 
-    // =================================================
-    // RESPONSE
-    // =================================================
+    /* =====================================================
+       HISTORICAL CUSTOMER ORDER COUNT
+       =====================================================
 
-    return Response.json(
+       IMPORTANT:
+
+       We DO NOT use DISTINCT.
+
+       Every order placed by a customer
+       increases the count.
+
+       Example:
+
+       Session 1:
+       A → 1
+       B → 2
+       C → 3
+       D → 4
+
+       Done
+
+       Session 2:
+       A → 5
+       A → 6
+
+       Therefore this is simply the
+       total number of customer orders.
+
+       DONE never decreases this value.
+    */
+
+    const {
+      count: customerOrderCount,
+      error: customerCountError,
+    } = await supabase
+      .from("orders")
+      .select(
+        "id",
+        {
+          count: "exact",
+          head: true,
+        }
+      )
+      .eq(
+        "restaurant_id",
+        restaurant.id
+      );
+
+    if (customerCountError) {
+      console.error(
+        "Customer order count error:",
+        customerCountError
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Failed to calculate customer order count",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    /* =====================================================
+       RESPONSE
+       ===================================================== */
+
+    return NextResponse.json(
       {
         restaurant,
 
@@ -409,117 +380,145 @@ export async function GET(req: NextRequest) {
           normalizedOrders,
 
         /*
-         * PERSISTENT COUNT
+         * This number comes from ALL
+         * restaurant orders.
          *
-         * This does NOT disappear
-         * when Done is clicked.
+         * It does not depend on OPEN
+         * billing sessions.
+         *
+         * Therefore Done does not
+         * decrease it.
          */
-        customerOrderCount,
+        customerOrderCount:
+          Number(
+            customerOrderCount || 0
+          ),
       },
       {
         status: 200,
-
-        headers: {
-          "Cache-Control":
-            "no-store",
-        },
       }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error(
-      "Order details API error:",
+      "Order details GET error:",
       error
     );
 
-    return Response.json(
+    return NextResponse.json(
       {
         error:
-          "Unable to load order details",
+          error?.message ||
+          "Internal server error",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }
 
-// =====================================================
-// PATCH
-//
-// DONE BUTTON
-//
-// Closes the complete billing session.
-// =====================================================
+/* =========================================================
+   PATCH
+   CLOSE BILLING SESSION
+   ========================================================= */
 
 export async function PATCH(
-  req: NextRequest
+  request: NextRequest
 ) {
   try {
     const body =
-      await req.json();
+      await request.json();
 
     const slug =
-      typeof body.slug === "string"
-        ? body.slug.trim()
-        : "";
+      String(
+        body?.slug || ""
+      ).trim();
 
     const billingSessionId =
-      typeof body.billingSessionId ===
-      "string"
-        ? body.billingSessionId.trim()
-        : "";
+      String(
+        body?.billingSessionId ||
+          ""
+      ).trim();
 
-    if (
-      !slug ||
-      !billingSessionId
-    ) {
-      return Response.json(
+    if (!slug) {
+      return NextResponse.json(
         {
           error:
-            "Invalid billing session",
+            "Restaurant slug is required",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
-    const supabase =
-      getAdminSupabase();
+    if (!billingSessionId) {
+      return NextResponse.json(
+        {
+          error:
+            "Billing session ID is required",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
 
-    // =================================================
-    // RESTAURANT
-    // =================================================
+    /* =====================================================
+       RESTAURANT
+       ===================================================== */
 
     const {
       data: restaurant,
       error: restaurantError,
     } = await supabase
       .from("restaurants")
-      .select("id")
+      .select(
+        "id, name, slug, is_active"
+      )
       .eq("slug", slug)
-      .single();
+      .maybeSingle();
 
-    if (
-      restaurantError ||
-      !restaurant
-    ) {
-      return Response.json(
+    if (restaurantError) {
+      console.error(
+        "Restaurant lookup error:",
+        restaurantError
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Failed to find restaurant",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    if (!restaurant) {
+      return NextResponse.json(
         {
           error:
             "Restaurant not found",
         },
-        { status: 404 }
+        {
+          status: 404,
+        }
       );
     }
 
-    // =================================================
-    // VERIFY SESSION
-    // =================================================
+    /* =====================================================
+       VERIFY BILLING SESSION
+       ===================================================== */
 
     const {
-      data: session,
-      error: sessionError,
+      data: billingSession,
+      error: billingSessionError,
     } = await supabase
       .from("billing_sessions")
       .select(
-        "id,restaurant_id,status"
+        "id, restaurant_id, table_id, status"
       )
       .eq(
         "id",
@@ -529,34 +528,40 @@ export async function PATCH(
         "restaurant_id",
         restaurant.id
       )
-      .single();
+      .maybeSingle();
 
-    if (
-      sessionError ||
-      !session
-    ) {
-      return Response.json(
+    if (billingSessionError) {
+      console.error(
+        "Billing session lookup error:",
+        billingSessionError
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Failed to verify billing session",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    if (!billingSession) {
+      return NextResponse.json(
         {
           error:
             "Billing session not found",
         },
-        { status: 404 }
+        {
+          status: 404,
+        }
       );
     }
 
-    if (
-      session.status ===
-      "CLOSED"
-    ) {
-      return Response.json({
-        success: true,
-        alreadyClosed: true,
-      });
-    }
-
-    // =================================================
-    // CLOSE BILLING SESSION
-    // =================================================
+    /* =====================================================
+       CLOSE SESSION
+       ===================================================== */
 
     const {
       error: closeError,
@@ -564,7 +569,6 @@ export async function PATCH(
       .from("billing_sessions")
       .update({
         status: "CLOSED",
-
         closed_at:
           new Date().toISOString(),
       })
@@ -579,65 +583,84 @@ export async function PATCH(
 
     if (closeError) {
       console.error(
-        "Billing session close error:",
+        "Close billing session error:",
         closeError
       );
 
-      return Response.json(
+      return NextResponse.json(
         {
           error:
-            "Failed to close bill",
+            "Failed to close billing session",
         },
-        { status: 500 }
+        {
+          status: 500,
+        }
       );
     }
 
-    // =================================================
-    // MARK ORDERS SERVED
-    // =================================================
+    /* =====================================================
+       MARK SESSION ORDERS SERVED
+       ===================================================== */
 
     const {
-      error:
-        ordersUpdateError,
+      error: servedError,
     } = await supabase
       .from("orders")
       .update({
         status: "SERVED",
-
-        updated_at:
-          new Date().toISOString(),
       })
-      .eq(
-        "billing_session_id",
-        billingSessionId
-      )
       .eq(
         "restaurant_id",
         restaurant.id
+      )
+      .eq(
+        "billing_session_id",
+        billingSessionId
       );
 
-    if (ordersUpdateError) {
+    if (servedError) {
       console.error(
-        "Orders update error:",
-        ordersUpdateError
+        "Mark orders served error:",
+        servedError
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Billing closed, but failed to update order status",
+        },
+        {
+          status: 500,
+        }
       );
     }
 
-    return Response.json({
-      success: true,
-    });
-  } catch (error) {
+    return NextResponse.json(
+      {
+        success: true,
+
+        message:
+          "Billing session completed",
+      },
+      {
+        status: 200,
+      }
+    );
+  } catch (error: any) {
     console.error(
-      "Billing session PATCH error:",
+      "Order details PATCH error:",
       error
     );
 
-    return Response.json(
+    return NextResponse.json(
       {
         error:
-          "Unable to complete bill",
+          error?.message ||
+          "Internal server error",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }

@@ -8866,3 +8866,1419 @@ a {
 
 
 
+/* =========================================================
+   CUSTOMER A/B/C/D QR SYSTEM
+   ========================================================= */
+
+.mt-customer-qr-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.mt-customer-qr-card {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(20, 35, 28, 0.08);
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(20, 35, 28, 0.05);
+}
+
+.mt-customer-qr-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.mt-customer-qr-title > span {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 10px;
+
+  background: #dff5e8;
+  color: #137a43;
+
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.mt-customer-qr-title > div {
+  min-width: 0;
+}
+
+.mt-customer-qr-title strong {
+  display: block;
+
+  color: #14251c;
+
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.mt-customer-qr-title small {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #7a887f;
+
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.mt-customer-qr-card .mt-qr-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 170px;
+  padding: 10px;
+
+  border-radius: 15px;
+
+  background: #f7faf8;
+}
+
+.mt-customer-qr-card .tableqr {
+  display: block;
+
+  width: min(100%, 155px);
+  height: auto;
+
+  border-radius: 8px;
+}
+
+.mt-customer-qr-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+
+  margin-top: 10px;
+}
+
+.mt-customer-qr-actions button {
+  min-height: 38px;
+
+  border: 0;
+  border-radius: 10px;
+
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.18s ease,
+    opacity 0.18s ease,
+    background 0.18s ease;
+}
+
+.mt-customer-qr-actions button:hover {
+  transform: translateY(-1px);
+}
+
+.mt-customer-qr-actions .mt-qr-button {
+  background: #dff5e8;
+  color: #137a43;
+}
+
+.mt-customer-qr-actions .mt-open-button {
+  background: #14251c;
+  color: #ffffff;
+}
+
+
+/* =========================================================
+   ALL QR MODAL
+   ========================================================= */
+
+.mt-all-qr-modal {
+  width: min(920px, calc(100vw - 28px));
+  max-height: min(90vh, 900px);
+
+  overflow-y: auto;
+
+  padding: 26px;
+}
+
+.mt-all-qr-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+
+  margin-top: 22px;
+}
+
+.mt-modal-customer-qr {
+  min-width: 0;
+
+  padding: 16px;
+
+  border: 1px solid rgba(20, 35, 28, 0.08);
+  border-radius: 20px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 10px 30px rgba(20, 35, 28, 0.06);
+}
+
+.mt-modal-customer-qr .mt-big-qr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 230px;
+  padding: 14px;
+
+  margin-top: 14px;
+
+  border-radius: 16px;
+
+  background: #f7faf8;
+}
+
+.mt-modal-customer-qr .tableqr {
+  display: block;
+
+  width: min(100%, 210px);
+  height: auto;
+
+  border-radius: 8px;
+}
+
+.mt-modal-customer-qr .mt-qr-url {
+  margin-top: 10px;
+  padding: 9px 10px;
+
+  overflow: hidden;
+
+  border-radius: 9px;
+
+  background: #f5f7f6;
+
+  color: #748078;
+
+  font-size: 10px;
+  line-height: 1.4;
+
+  word-break: break-all;
+}
+
+.mt-modal-customer-qr .mt-qr-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+
+  margin-top: 10px;
+}
+
+.mt-modal-customer-qr .mt-qr-actions button {
+  min-height: 40px;
+}
+
+
+/* =========================================================
+   PRINT / SMALL SCREEN FRIENDLY
+   ========================================================= */
+
+@media (max-width: 720px) {
+  .mt-customer-qr-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .mt-customer-qr-card {
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .mt-customer-qr-title {
+    gap: 7px;
+  }
+
+  .mt-customer-qr-title > span {
+    width: 30px;
+    height: 30px;
+    flex-basis: 30px;
+
+    border-radius: 8px;
+
+    font-size: 12px;
+  }
+
+  .mt-customer-qr-title strong {
+    font-size: 12px;
+  }
+
+  .mt-customer-qr-title small {
+    font-size: 9px;
+  }
+
+  .mt-customer-qr-card .mt-qr-preview {
+    min-height: 130px;
+    padding: 6px;
+  }
+
+  .mt-customer-qr-card .tableqr {
+    width: min(100%, 115px);
+  }
+
+  .mt-customer-qr-actions {
+    gap: 5px;
+  }
+
+  .mt-customer-qr-actions button {
+    min-height: 34px;
+    border-radius: 8px;
+
+    font-size: 10px;
+  }
+
+  .mt-all-qr-modal {
+    width: calc(100vw - 18px);
+    max-height: 94vh;
+
+    padding: 18px;
+  }
+
+  .mt-all-qr-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .mt-modal-customer-qr {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .mt-modal-customer-qr .mt-big-qr {
+    min-height: 210px;
+  }
+
+  .mt-modal-customer-qr .tableqr {
+    width: min(100%, 190px);
+  }
+}
+
+@media (max-width: 430px) {
+  .mt-customer-qr-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mt-customer-qr-card .mt-qr-preview {
+    min-height: 112px;
+  }
+
+  .mt-customer-qr-card .tableqr {
+    width: 100px;
+  }
+
+  .mt-customer-qr-actions button {
+    font-size: 9px;
+  }
+}
+
+
+/* =========================================================
+   OPTIONAL PRINT LAYOUT
+   ========================================================= */
+
+@media print {
+  body {
+    background: #ffffff !important;
+  }
+
+  .mt-modal-overlay {
+    position: static !important;
+
+    display: block !important;
+
+    background: #ffffff !important;
+  }
+
+  .mt-all-qr-modal {
+    width: 100% !important;
+    max-height: none !important;
+
+    overflow: visible !important;
+
+    box-shadow: none !important;
+    border: 0 !important;
+  }
+
+  .mt-all-qr-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mt-modal-customer-qr {
+    break-inside: avoid;
+
+    box-shadow: none !important;
+  }
+
+  .mt-qr-actions,
+  .mt-qr-close,
+  .mt-modal-handle {
+    display: none !important;
+  }
+}
+
+
+/* =========================================================
+   ORDER DETAILS PAGE
+   ========================================================= */
+
+.fx-order-details-page {
+  width: 100%;
+  min-height: 100%;
+  padding: 28px;
+  background: #f7f9f8;
+  color: #111814;
+}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.fx-od-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.fx-od-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #6b7a72;
+  margin-bottom: 6px;
+}
+
+.fx-od-header h1 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.fx-od-header p {
+  margin: 8px 0 0;
+  color: #75827b;
+  font-size: 14px;
+}
+
+.fx-od-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 15px;
+  border: 1px solid #dce4df;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #1c2822;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.fx-od-refresh:hover {
+  background: #f1f6f3;
+  border-color: #cbd8d0;
+}
+
+.fx-od-refresh:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.fx-od-refresh-icon {
+  display: inline-flex;
+  font-size: 19px;
+  line-height: 1;
+}
+
+.fx-od-refresh-icon.spinning {
+  animation: fxOdSpin 0.8s linear infinite;
+}
+
+@keyframes fxOdSpin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================================================
+   SUMMARY
+   ========================================================= */
+
+.fx-od-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.fx-od-summary-card {
+  min-height: 112px;
+  padding: 18px;
+  border: 1px solid #e1e8e4;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 5px 18px rgba(23, 39, 30, 0.035);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.fx-od-summary-card span {
+  color: #748079;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fx-od-summary-card strong {
+  font-size: 30px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #17211c;
+}
+
+.fx-od-summary-card.highlight {
+  background: #eaf7ef;
+  border-color: #c9e7d4;
+}
+
+.fx-od-summary-card.highlight span {
+  color: #397052;
+}
+
+.fx-od-summary-card.highlight strong {
+  color: #126b3b;
+}
+
+/* =========================================================
+   TOOLBAR
+   ========================================================= */
+
+.fx-od-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.fx-od-search {
+  flex: 1;
+  max-width: 440px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 14px;
+  border: 1px solid #dce5df;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.fx-od-search span {
+  color: #8a968f;
+  font-size: 21px;
+  line-height: 1;
+}
+
+.fx-od-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #17211c;
+  font-size: 13px;
+}
+
+.fx-od-search input::placeholder {
+  color: #9aa49f;
+}
+
+.fx-od-select {
+  height: 46px;
+  min-width: 160px;
+  padding: 0 35px 0 13px;
+  border: 1px solid #dce5df;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #26332c;
+  font-size: 13px;
+  font-weight: 650;
+  outline: none;
+  cursor: pointer;
+}
+
+/* =========================================================
+   ERROR
+   ========================================================= */
+
+.fx-od-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  border: 1px solid #f0caca;
+  border-radius: 13px;
+  background: #fff5f5;
+  color: #8d2929;
+}
+
+.fx-od-error strong {
+  font-size: 13px;
+}
+
+.fx-od-error span {
+  flex: 1;
+  font-size: 13px;
+  color: #a34a4a;
+}
+
+.fx-od-error button {
+  border: 0;
+  background: #8d2929;
+  color: #ffffff;
+  padding: 8px 13px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* =========================================================
+   EMPTY
+   ========================================================= */
+
+.fx-od-empty {
+  min-height: 280px;
+  border: 1px dashed #d8e1db;
+  border-radius: 18px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  padding: 35px;
+}
+
+.fx-od-empty-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #edf6f0;
+  color: #27794b;
+  font-size: 24px;
+  margin-bottom: 12px;
+}
+
+.fx-od-empty h3 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.fx-od-empty p {
+  margin: 7px 0 0;
+  max-width: 340px;
+  color: #7d8882;
+  font-size: 13px;
+}
+
+/* =========================================================
+   TABLE GRID
+   ========================================================= */
+
+.fx-od-table-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* =========================================================
+   TABLE BILL CARD
+   ========================================================= */
+
+.fx-table-bill-card {
+  width: 100%;
+  min-width: 0;
+  padding: 18px;
+  text-align: left;
+  border: 1px solid #e0e8e3;
+  border-radius: 17px;
+  background: #ffffff;
+  color: #17211c;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(20, 38, 27, 0.035);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.fx-table-bill-card:hover {
+  transform: translateY(-2px);
+  border-color: #bcd7c7;
+  box-shadow: 0 12px 28px rgba(20, 38, 27, 0.08);
+}
+
+.fx-tbc-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.fx-tbc-table {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.fx-tbc-table-icon {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #edf7f0;
+  color: #187541;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.fx-tbc-table span {
+  display: block;
+  color: #89938d;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.fx-tbc-table h2 {
+  margin: 3px 0 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.fx-tbc-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #edf8f1;
+  color: #27804b;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.fx-tbc-live i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #2da65e;
+  box-shadow: 0 0 0 3px rgba(45, 166, 94, 0.1);
+}
+
+.fx-tbc-main {
+  margin-top: 22px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.fx-tbc-main span {
+  display: block;
+  color: #89938d;
+  font-size: 11px;
+  margin-bottom: 5px;
+}
+
+.fx-tbc-main strong {
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+
+.fx-tbc-arrow {
+  width: 35px;
+  height: 35px;
+  border-radius: 10px;
+  background: #f3f6f4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #53625a;
+  font-size: 18px;
+}
+
+.fx-tbc-divider {
+  height: 1px;
+  margin: 17px 0 12px;
+  background: #edf0ee;
+}
+
+.fx-tbc-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #7c8881;
+  font-size: 11px;
+}
+
+/* =========================================================
+   LOADING
+   ========================================================= */
+
+.fx-od-loading {
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  color: #718078;
+}
+
+.fx-od-spinner {
+  width: 31px;
+  height: 31px;
+  border-radius: 50%;
+  border: 3px solid #dce8e0;
+  border-top-color: #23804b;
+  animation: fxOdSpin 0.75s linear infinite;
+}
+
+.fx-od-loading p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+/* =========================================================
+   BILL OVERLAY
+   ========================================================= */
+
+.fx-bill-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(10, 18, 14, 0.42);
+  backdrop-filter: blur(3px);
+}
+
+/* =========================================================
+   BILL DRAWER
+   ========================================================= */
+
+.fx-bill-drawer {
+  width: min(520px, 100%);
+  height: 100%;
+  background: #f4f6f4;
+  box-shadow: -18px 0 50px rgba(0, 0, 0, 0.16);
+  display: flex;
+  flex-direction: column;
+  animation: fxBillSlideIn 0.25s ease-out;
+}
+
+@keyframes fxBillSlideIn {
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* =========================================================
+   BILL HEADER
+   ========================================================= */
+
+.fx-bill-header {
+  min-height: 82px;
+  padding: 18px 21px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  background: #ffffff;
+  border-bottom: 1px solid #e0e6e2;
+}
+
+.fx-bill-header > div:first-child > span {
+  color: #2a8050;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+}
+
+.fx-bill-header h2 {
+  margin: 4px 0 0;
+  font-size: 21px;
+  font-weight: 850;
+  letter-spacing: -0.03em;
+}
+
+.fx-bill-header p {
+  margin: 4px 0 0;
+  color: #7a8580;
+  font-size: 11px;
+}
+
+.fx-bill-close {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border: 1px solid #e0e6e2;
+  border-radius: 11px;
+  background: #ffffff;
+  color: #526058;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.fx-bill-close:hover {
+  background: #f2f5f3;
+}
+
+/* =========================================================
+   BILL PAPER
+   ========================================================= */
+
+.fx-bill-paper {
+  flex: 1;
+  overflow-y: auto;
+  padding: 22px;
+}
+
+.fx-bill-paper::-webkit-scrollbar {
+  width: 7px;
+}
+
+.fx-bill-paper::-webkit-scrollbar-thumb {
+  background: #d3ddd7;
+  border-radius: 10px;
+}
+
+/* =========================================================
+   BRAND
+   ========================================================= */
+
+.fx-bill-brand {
+  padding-bottom: 18px;
+  text-align: center;
+  font-size: 19px;
+  font-weight: 850;
+  letter-spacing: -0.025em;
+}
+
+.fx-bill-brand small {
+  display: block;
+  margin-top: 4px;
+  color: #8a958f;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+/* =========================================================
+   BILL INFO
+   ========================================================= */
+
+.fx-bill-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.fx-bill-info > div {
+  padding: 12px;
+  border-radius: 11px;
+  background: #f1f5f2;
+}
+
+.fx-bill-info span {
+  display: block;
+  color: #89938e;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.fx-bill-info strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+/* =========================================================
+   LINES
+   ========================================================= */
+
+.fx-bill-line {
+  height: 1px;
+  margin: 18px 0;
+  background: #dfe6e1;
+}
+
+/* =========================================================
+   BILL ITEMS
+   ========================================================= */
+
+.fx-bill-items {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.fx-bill-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.fx-bill-item-left {
+  min-width: 0;
+}
+
+.fx-bill-item-left strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.fx-bill-item-left span {
+  display: block;
+  margin-top: 3px;
+  color: #7f8984;
+  font-size: 10px;
+}
+
+.fx-bill-item > strong {
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+/* =========================================================
+   TOTAL
+   ========================================================= */
+
+.fx-bill-total-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #69756f;
+  font-size: 12px;
+}
+
+.fx-bill-total-row strong {
+  color: #17211c;
+  font-size: 13px;
+}
+
+.fx-bill-grand-total {
+  margin-top: 12px;
+  padding: 15px;
+  border-radius: 13px;
+  background: #eaf7ef;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fx-bill-grand-total span {
+  color: #34704e;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+}
+
+.fx-bill-grand-total strong {
+  color: #126b3b;
+  font-size: 20px;
+  font-weight: 850;
+}
+
+/* =========================================================
+   ORDER TIMELINE
+   ========================================================= */
+
+.fx-bill-history {
+  margin-top: 25px;
+}
+
+.fx-bill-history h3 {
+  margin: 0 0 13px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+/*
+ * One order = one timeline item.
+ * Customer A/B/C/D is displayed inside.
+ */
+
+.fx-bill-order {
+  position: relative;
+  display: flex;
+  gap: 11px;
+  padding-bottom: 18px;
+}
+
+.fx-bill-order:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 15px;
+  top: 31px;
+  bottom: 0;
+  width: 1px;
+  background: #d7e1db;
+}
+
+.fx-bill-order-dot {
+  width: 31px;
+  height: 31px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eaf7ef;
+  border: 1px solid #c9e7d4;
+  color: #237546;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.fx-bill-order-content {
+  min-width: 0;
+  flex: 1;
+  padding: 2px 0 0;
+}
+
+.fx-bill-order-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fx-bill-order-top strong {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/*
+ * Customer label.
+ * The page renders:
+ *
+ * Customer A
+ * Customer B
+ * Customer C
+ * Customer D
+ */
+
+.fx-bill-order-content > span {
+  display: block;
+  margin-top: 4px;
+  color: #7d8982;
+  font-size: 10px;
+}
+
+.fx-bill-order-content > span:first-of-type {
+  color: #177342;
+  font-weight: 800;
+  font-size: 11px;
+}
+
+.fx-bill-order-items {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 8px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  background: #f5f7f5;
+}
+
+.fx-bill-order-items span {
+  color: #56635b;
+  font-size: 10px;
+}
+
+/* =========================================================
+   STATUS
+   ========================================================= */
+
+.fx-bill-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 7px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.fx-bill-status.new {
+  background: #fff5dc;
+  color: #9a6a09;
+}
+
+.fx-bill-status.preparing {
+  background: #eaf2ff;
+  color: #3566a7;
+}
+
+.fx-bill-status.ready {
+  background: #e9f8ee;
+  color: #267347;
+}
+
+.fx-bill-status.served {
+  background: #edf0ef;
+  color: #68736d;
+}
+
+.fx-bill-status.cancelled {
+  background: #ffeded;
+  color: #a33b3b;
+}
+
+/* =========================================================
+   BILL NOTE
+   ========================================================= */
+
+.fx-bill-note {
+  margin-top: 10px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  background: #edf2ef;
+  color: #718078;
+  text-align: center;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+/* =========================================================
+   BILL FOOTER
+   ========================================================= */
+
+.fx-bill-footer {
+  padding: 13px 20px;
+  border-top: 1px solid #dfe6e1;
+  background: #ffffff;
+}
+
+.fx-bill-primary {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 12px;
+  background: #14743f;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.fx-bill-primary:hover {
+  background: #0f6033;
+  transform: translateY(-1px);
+}
+
+.fx-bill-primary:active {
+  transform: translateY(0);
+}
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (max-width: 1100px) {
+  .fx-od-table-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fx-od-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 700px) {
+  .fx-order-details-page {
+    padding: 18px 14px 90px;
+  }
+
+  .fx-od-header {
+    align-items: flex-start;
+    margin-bottom: 18px;
+  }
+
+  .fx-od-header h1 {
+    font-size: 24px;
+  }
+
+  .fx-od-header p {
+    font-size: 12px;
+  }
+
+  .fx-od-refresh {
+    min-width: 42px;
+    width: 42px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .fx-od-refresh-icon {
+    font-size: 20px;
+  }
+
+  .fx-od-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  .fx-od-summary-card {
+    min-height: 94px;
+    padding: 14px;
+    border-radius: 13px;
+  }
+
+  .fx-od-summary-card strong {
+    font-size: 24px;
+  }
+
+  .fx-od-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .fx-od-search {
+    max-width: none;
+  }
+
+  .fx-od-select {
+    width: 100%;
+  }
+
+  .fx-od-table-grid {
+    grid-template-columns: 1fr;
+    gap: 11px;
+  }
+
+  .fx-table-bill-card {
+    padding: 15px;
+    border-radius: 15px;
+  }
+
+  .fx-tbc-main {
+    margin-top: 17px;
+  }
+
+  .fx-tbc-meta {
+    font-size: 10px;
+  }
+
+  .fx-bill-drawer {
+    width: 100%;
+  }
+
+  .fx-bill-paper {
+    padding: 18px 15px;
+  }
+
+  .fx-bill-header {
+    padding: 15px;
+  }
+
+  .fx-bill-footer {
+    padding: 11px 15px;
+  }
+}
+
+/* =========================================================
+   SMALL MOBILE
+   ========================================================= */
+
+@media (max-width: 390px) {
+  .fx-order-details-page {
+    padding-left: 11px;
+    padding-right: 11px;
+  }
+
+  .fx-od-summary-card {
+    padding: 12px;
+  }
+
+  .fx-od-summary-card span {
+    font-size: 10px;
+  }
+
+  .fx-od-summary-card strong {
+    font-size: 21px;
+  }
+
+  .fx-tbc-table h2 {
+    font-size: 14px;
+  }
+
+  .fx-tbc-main strong {
+    font-size: 22px;
+  }
+}

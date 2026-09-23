@@ -14,6 +14,14 @@ import { supabaseBrowser } from "@/lib/supabase";
 
 type ManageTab = "menu" | "tables";
 
+type CustomerSlot = {
+  id: string;
+  table_id: string;
+  slot_code: "A" | "B" | "C" | "D";
+  label: string;
+  is_active: boolean;
+};
+
 type Restaurant = {
   id: string;
   name: string;
@@ -47,7 +55,27 @@ type TableItem = {
   name: string;
   is_active?: boolean;
   created_at?: string;
+  sort_order?: number;
 };
+
+const CUSTOMER_SLOTS = [
+  {
+    code: "A",
+    label: "Customer A",
+  },
+  {
+    code: "B",
+    label: "Customer B",
+  },
+  {
+    code: "C",
+    label: "Customer C",
+  },
+  {
+    code: "D",
+    label: "Customer D",
+  },
+] as const;
 
 function money(value: number | string) {
   return `₹${Number(value || 0).toFixed(0)}`;
@@ -76,6 +104,9 @@ export default function ManagePage({
 
   const [tables, setTables] =
     useState<TableItem[]>([]);
+
+  const [customerSlots, setCustomerSlots] =
+    useState<CustomerSlot[]>([]);
 
   const [loading, setLoading] =
     useState(true);
@@ -180,45 +211,59 @@ export default function ManagePage({
         setRestaurant(restaurantData);
 
         const [
-  menuResult,
-  categoryResult,
-  tableResult,
-] = await Promise.all([
-  supabase
-    .from("menu_items")
-    .select("*")
-    .eq(
-      "restaurant_id",
-      restaurantData.id
-    )
-    .order("created_at", {
-      ascending: false,
-    }),
+          menuResult,
+          categoryResult,
+          tableResult,
+          slotResult,
+        ] = await Promise.all([
+          supabase
+            .from("menu_items")
+            .select("*")
+            .eq(
+              "restaurant_id",
+              restaurantData.id
+            )
+            .order("created_at", {
+              ascending: false,
+            }),
 
-  supabase
-    .from("menu_categories")
-    .select("id,name")
-    .eq(
-      "restaurant_id",
-      restaurantData.id
-    )
-    .order("name", {
-      ascending: true,
-    }),
+          supabase
+            .from("menu_categories")
+            .select("id,name")
+            .eq(
+              "restaurant_id",
+              restaurantData.id
+            )
+            .order("name", {
+              ascending: true,
+            }),
 
-  supabase
-    .from("tables")
-    .select(
-      "id,restaurant_id,name,is_active,sort_order,created_at"
-    )
-    .eq(
-      "restaurant_id",
-      restaurantData.id
-    )
-    .order("created_at", {
-      ascending: true,
-    }),
-]);
+          supabase
+            .from("tables")
+            .select(
+              "id,restaurant_id,name,is_active,sort_order,created_at"
+            )
+            .eq(
+              "restaurant_id",
+              restaurantData.id
+            )
+            .order("created_at", {
+              ascending: true,
+            }),
+
+          supabase
+            .from("customer_slots")
+            .select(
+              "id,table_id,slot_code,label,is_active"
+            )
+            .eq(
+              "restaurant_id",
+              restaurantData.id
+            )
+            .order("slot_code", {
+              ascending: true,
+            }),
+        ]);
 
         if (menuResult.error) {
           throw menuResult.error;
@@ -232,6 +277,18 @@ export default function ManagePage({
           throw tableResult.error;
         }
 
+        /*
+         * Customer slots are member-only through RLS.
+         * If this query fails, the table QR still works
+         * because the slot itself is generated from A/B/C/D.
+         */
+        if (slotResult.error) {
+          console.warn(
+            "Customer slot loading warning:",
+            slotResult.error
+          );
+        }
+
         setMenuItems(
           menuResult.data || []
         );
@@ -242,6 +299,10 @@ export default function ManagePage({
 
         setTables(
           tableResult.data || []
+        );
+
+        setCustomerSlots(
+          slotResult.data || []
         );
       } catch (error) {
         console.error(
@@ -511,55 +572,65 @@ export default function ManagePage({
     setTableName("");
   }
 
-async function addTable() {
-  if (!restaurant) return;
+  async function addTable() {
+    if (!restaurant) return;
 
-  const name = tableName.trim();
+    const name =
+      tableName.trim();
 
-  if (!name) {
-    window.alert(
-      "Please enter a table name."
-    );
-    return;
-  }
-
-  setTableSaving(true);
-
-  try {
-    const supabase =
-      supabaseBrowser();
-
-    const {
-      error,
-    } = await supabase
-      .from("tables")
-      .insert({
-        restaurant_id: restaurant.id,
-        name,
-        is_active: true,
-      });
-
-    if (error) {
-      throw error;
+    if (!name) {
+      window.alert(
+        "Please enter a table name."
+      );
+      return;
     }
 
-    closeTableModal();
+    setTableSaving(true);
 
-    await loadData();
-  } catch (error: any) {
-    console.error(
-      "Table add error:",
-      error
-    );
+    try {
+      const supabase =
+        supabaseBrowser();
 
-    window.alert(
-      error?.message ||
-        "Could not add table."
-    );
-  } finally {
-    setTableSaving(false);
+      const {
+        error,
+      } = await supabase
+        .from("tables")
+        .insert({
+          restaurant_id:
+            restaurant.id,
+          name,
+          is_active: true,
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      /*
+       * Database trigger automatically creates:
+       * Customer A
+       * Customer B
+       * Customer C
+       * Customer D
+       */
+
+      closeTableModal();
+
+      await loadData();
+    } catch (error: any) {
+      console.error(
+        "Table add error:",
+        error
+      );
+
+      window.alert(
+        error?.message ||
+          "Could not add table."
+      );
+    } finally {
+      setTableSaving(false);
+    }
   }
-}
 
   async function deleteTable(
     table: TableItem
@@ -612,24 +683,50 @@ async function addTable() {
   }
 
   /* =========================
-     CUSTOMER URL
+     CUSTOMER QR
      ========================= */
 
   function customerUrl(
-    table: TableItem
+    table: TableItem,
+    slotCode?: "A" | "B" | "C" | "D"
   ) {
-    if (typeof window === "undefined") {
+    if (
+      typeof window ===
+      "undefined"
+    ) {
       return "";
     }
 
-    return `${window.location.origin}/r/${restaurant?.slug}/t/${table.id}`;
+    const base =
+      `${window.location.origin}/r/${restaurant?.slug}/t/${table.id}`;
+
+    if (!slotCode) {
+      return base;
+    }
+
+    return `${base}?customer=${slotCode}`;
+  }
+
+  function getSlot(
+    tableId: string,
+    slotCode: "A" | "B" | "C" | "D"
+  ) {
+    return customerSlots.find(
+      (slot) =>
+        slot.table_id === tableId &&
+        slot.slot_code === slotCode
+    );
   }
 
   async function copyCustomerUrl(
-    table: TableItem
+    table: TableItem,
+    slotCode?: "A" | "B" | "C" | "D"
   ) {
     const url =
-      customerUrl(table);
+      customerUrl(
+        table,
+        slotCode
+      );
 
     if (!url) return;
 
@@ -639,7 +736,9 @@ async function addTable() {
       );
 
       window.alert(
-        "Customer link copied."
+        slotCode
+          ? `Customer ${slotCode} link copied.`
+          : "Customer link copied."
       );
     } catch {
       window.prompt(
@@ -650,10 +749,14 @@ async function addTable() {
   }
 
   function openCustomerMenu(
-    table: TableItem
+    table: TableItem,
+    slotCode?: "A" | "B" | "C" | "D"
   ) {
     const url =
-      customerUrl(table);
+      customerUrl(
+        table,
+        slotCode
+      );
 
     if (!url) return;
 
@@ -723,7 +826,10 @@ async function addTable() {
      LOADING
      ========================= */
 
-  if (loading && !restaurant) {
+  if (
+    loading &&
+    !restaurant
+  ) {
     return (
       <main className="fx-app">
         <div className="mt-loading">
@@ -903,8 +1009,6 @@ async function addTable() {
               </button>
             </div>
 
-            {/* SEARCH */}
-
             <div className="mt-menu-toolbar">
 
               <div className="mt-search">
@@ -993,8 +1097,6 @@ async function addTable() {
 
               </div>
             </div>
-
-            {/* FOOD GRID */}
 
             {filteredItems.length ===
             0 ? (
@@ -1161,8 +1263,8 @@ async function addTable() {
                 </h2>
 
                 <span>
-                  Create tables and generate
-                  customer ordering QR codes.
+                  Every table gets 4 customer
+                  QR codes.
                 </span>
               </div>
 
@@ -1179,8 +1281,6 @@ async function addTable() {
               </button>
             </div>
 
-            {/* TABLE INFO */}
-
             <div className="mt-table-info">
               <div>
                 <span>
@@ -1193,13 +1293,11 @@ async function addTable() {
               </div>
 
               <p>
-                Each table gets its own
-                customer menu link and QR
-                code.
+                Each table has separate QR
+                codes for Customer A, B, C
+                and D.
               </p>
             </div>
-
-            {/* TABLE GRID */}
 
             {tables.length === 0 ? (
               <div className="mt-empty">
@@ -1255,11 +1353,91 @@ async function addTable() {
 
                       </div>
 
-                      <div className="mt-qr-preview">
+                      {/* =====================================
+                          FOUR CUSTOMER QR PREVIEWS
+                          ===================================== */}
 
-<QR
-  value={customerUrl(table)}
-/>
+                      <div className="mt-customer-qr-grid">
+
+                        {CUSTOMER_SLOTS.map(
+                          (slot) => {
+                            const dbSlot =
+                              getSlot(
+                                table.id,
+                                slot.code
+                              );
+
+                            return (
+                              <div
+                                key={
+                                  slot.code
+                                }
+                                className="mt-customer-qr-card"
+                              >
+
+                                <div className="mt-customer-qr-title">
+                                  <span>
+                                    {slot.code}
+                                  </span>
+
+                                  <div>
+                                    <strong>
+                                      {
+                                        slot.label
+                                      }
+                                    </strong>
+
+                                    <small>
+                                      {dbSlot
+                                        ? "QR ready"
+                                        : "QR slot"}
+                                    </small>
+                                  </div>
+                                </div>
+
+                                <div className="mt-qr-preview">
+                                  <QR
+                                    value={customerUrl(
+                                      table,
+                                      slot.code
+                                    )}
+                                  />
+                                </div>
+
+                                <div className="mt-customer-qr-actions">
+
+                                  <button
+                                    type="button"
+                                    className="mt-qr-button"
+                                    onClick={() =>
+                                      copyCustomerUrl(
+                                        table,
+                                        slot.code
+                                      )
+                                    }
+                                  >
+                                    Copy
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className="mt-open-button"
+                                    onClick={() =>
+                                      openCustomerMenu(
+                                        table,
+                                        slot.code
+                                      )
+                                    }
+                                  >
+                                    Open
+                                  </button>
+
+                                </div>
+
+                              </div>
+                            );
+                          }
+                        )}
 
                       </div>
 
@@ -1274,31 +1452,7 @@ async function addTable() {
                             )
                           }
                         >
-                          View QR
-                        </button>
-
-                        <button
-                          type="button"
-                          className="mt-open-button"
-                          onClick={() =>
-                            openCustomerMenu(
-                              table
-                            )
-                          }
-                        >
-                          Open menu
-                        </button>
-
-                        <button
-                          type="button"
-                          className="mt-copy-button"
-                          onClick={() =>
-                            copyCustomerUrl(
-                              table
-                            )
-                          }
-                        >
-                          Copy link
+                          View all QR
                         </button>
 
                         <button
@@ -1648,18 +1802,12 @@ async function addTable() {
                 </div>
 
                 <span>
-                  Use names like
+                  Every new table
+                  automatically gets
                   <strong>
-                    Table 1
+                    Customer A, B, C & D
                   </strong>
-                  ,
-                  <strong>
-                    Table 2
-                  </strong>
-                  or
-                  <strong>
-                    VIP Table
-                  </strong>
+                  QR slots.
                 </span>
               </div>
 
@@ -1712,7 +1860,7 @@ async function addTable() {
             onClick={closeQr}
           >
             <div
-              className="mt-qr-modal"
+              className="mt-qr-modal mt-all-qr-modal"
               onClick={(event) =>
                 event.stopPropagation()
               }
@@ -1737,50 +1885,88 @@ async function addTable() {
               </h2>
 
               <p className="mt-qr-description">
-                Customers can scan this QR
-                code to open the menu for
-                this table.
+                Use one QR for each customer
+                position at this table.
               </p>
 
-              <div className="mt-big-qr">
-                <QR
-  value={customerUrl(
-    selectedTable
-  )}
-/>
-              </div>
+              <div className="mt-all-qr-grid">
 
-              <div className="mt-qr-url">
-                {customerUrl(
-                  selectedTable
+                {CUSTOMER_SLOTS.map(
+                  (slot) => (
+                    <div
+                      key={
+                        slot.code
+                      }
+                      className="mt-modal-customer-qr"
+                    >
+
+                      <div className="mt-customer-qr-title">
+                        <span>
+                          {slot.code}
+                        </span>
+
+                        <div>
+                          <strong>
+                            {
+                              slot.label
+                            }
+                          </strong>
+
+                          <small>
+                            Scan to order
+                          </small>
+                        </div>
+                      </div>
+
+                      <div className="mt-big-qr">
+                        <QR
+                          value={customerUrl(
+                            selectedTable,
+                            slot.code
+                          )}
+                        />
+                      </div>
+
+                      <div className="mt-qr-url">
+                        {customerUrl(
+                          selectedTable,
+                          slot.code
+                        )}
+                      </div>
+
+                      <div className="mt-qr-actions">
+
+                        <button
+                          type="button"
+                          className="mt-save"
+                          onClick={() =>
+                            copyCustomerUrl(
+                              selectedTable,
+                              slot.code
+                            )
+                          }
+                        >
+                          Copy link
+                        </button>
+
+                        <button
+                          type="button"
+                          className="mt-cancel"
+                          onClick={() =>
+                            openCustomerMenu(
+                              selectedTable,
+                              slot.code
+                            )
+                          }
+                        >
+                          Open menu
+                        </button>
+
+                      </div>
+
+                    </div>
+                  )
                 )}
-              </div>
-
-              <div className="mt-qr-actions">
-
-                <button
-                  type="button"
-                  className="mt-save"
-                  onClick={() =>
-                    copyCustomerUrl(
-                      selectedTable
-                    )
-                  }
-                >
-                  Copy link
-                </button>
-
-                <button
-                  type="button"
-                  className="mt-cancel"
-                  onClick={() =>
-                    openCustomerMenu(
-                      selectedTable
-                    )
-                  }
-                >
-                  Open menu
-                </button>
 
               </div>
 

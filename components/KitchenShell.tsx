@@ -6,7 +6,12 @@ import { useRouter } from "next/navigation";
 type KitchenShellProps = {
   slug: string;
   restaurant: any;
-  active?: "dashboard" | "orders" | "requests" | "manage";
+  active?:
+    | "dashboard"
+    | "orders"
+    | "requests"
+    | "manage"
+    | "order-details";
   children: React.ReactNode;
   newOrders?: number;
   requests?: number;
@@ -215,12 +220,19 @@ export default function KitchenShell({
   const router = useRouter();
   const [mobileMenu, setMobileMenu] = useState(false);
 
-  const restaurantName = restaurant?.name || "Restaurant";
+  const restaurantName =
+    restaurant?.name || "Restaurant";
 
   const go = (path: string) => {
     setMobileMenu(false);
     router.push(path);
   };
+
+  /*
+   * =====================================================
+   * MAIN NAVIGATION
+   * =====================================================
+   */
 
   const mainNavigation = [
     {
@@ -251,6 +263,12 @@ export default function KitchenShell({
     },
   ];
 
+  /*
+   * =====================================================
+   * MANAGEMENT
+   * =====================================================
+   */
+
   const managementNavigation = [
     {
       label: "Menu",
@@ -262,17 +280,33 @@ export default function KitchenShell({
       icon: "grid" as IconName,
       path: `/k/${slug}/manage`,
     },
-
+    {
+      label: "Order Details",
+      icon: "orders" as IconName,
+      path: `/k/${slug}/order-details`,
+      key: "order-details",
+    },
   ];
 
-  const businessNavigation = [
+  /*
+   * =====================================================
+   * BUSINESS
+   * =====================================================
+   */
 
+  const businessNavigation = [
     {
       label: "Order History",
       icon: "history" as IconName,
       path: null,
-    }
+    },
   ];
+
+  /*
+   * =====================================================
+   * NAV ITEM
+   * =====================================================
+   */
 
   const renderNavItem = (
     item: {
@@ -290,10 +324,14 @@ export default function KitchenShell({
           <Icon name={item.icon} size={19} />
         </span>
 
-        <span className="fx-nav-label">{item.label}</span>
+        <span className="fx-nav-label">
+          {item.label}
+        </span>
 
         {item.badge && item.badge > 0 ? (
-          <span className="fx-nav-badge">{item.badge}</span>
+          <span className="fx-nav-badge">
+            {item.badge}
+          </span>
         ) : null}
       </>
     );
@@ -303,7 +341,9 @@ export default function KitchenShell({
         <button
           key={item.label}
           type="button"
-          className={`fx-nav-item ${isActive ? "active" : ""} fx-nav-disabled`}
+          className={`fx-nav-item ${
+            isActive ? "active" : ""
+          } fx-nav-disabled`}
           onClick={() => {}}
         >
           {content}
@@ -315,7 +355,9 @@ export default function KitchenShell({
       <button
         key={item.label}
         type="button"
-        className={`fx-nav-item ${isActive ? "active" : ""}`}
+        className={`fx-nav-item ${
+          isActive ? "active" : ""
+        }`}
         onClick={() => go(item.path!)}
       >
         {content}
@@ -325,12 +367,20 @@ export default function KitchenShell({
 
   return (
     <main className="fx-app">
-      {/* DESKTOP / TABLET SIDEBAR */}
+
+      {/* =====================================================
+          DESKTOP / TABLET SIDEBAR
+          ===================================================== */}
+
       <aside className="fx-sidebar">
         <div className="fx-sidebar-inner">
+
           {/* BRAND */}
+
           <div className="fx-sidebar-brand">
-            <div className="fx-brand-wordmark">Man.ko</div>
+            <div className="fx-brand-wordmark">
+              Man.ko
+            </div>
 
             <span className="fx-brand-subtitle">
               Restaurant Workspace
@@ -338,80 +388,135 @@ export default function KitchenShell({
           </div>
 
           {/* WORKSPACE */}
+
           <div className="fx-sidebar-section">
-            <div className="fx-sidebar-section-title">WORKSPACE</div>
+            <div className="fx-sidebar-section-title">
+              WORKSPACE
+            </div>
 
             <nav className="fx-sidebar-nav">
               {mainNavigation.map((item) =>
-                renderNavItem(item, active === item.key)
+                renderNavItem(
+                  item,
+                  active === item.key
+                )
               )}
             </nav>
           </div>
 
           {/* MANAGEMENT */}
+
           <div className="fx-sidebar-section">
-            <div className="fx-sidebar-section-title">MANAGEMENT</div>
+            <div className="fx-sidebar-section-title">
+              MANAGEMENT
+            </div>
 
             <nav className="fx-sidebar-nav">
-              {managementNavigation.map((item) =>
-                renderNavItem(item)
+              {managementNavigation.map(
+                (item) =>
+                  renderNavItem(
+                    item,
+                    active ===
+                      item.key
+                  )
               )}
             </nav>
           </div>
 
           {/* BUSINESS */}
+
           <div className="fx-sidebar-section">
-            <div className="fx-sidebar-section-title">BUSINESS</div>
+            <div className="fx-sidebar-section-title">
+              BUSINESS
+            </div>
 
             <nav className="fx-sidebar-nav">
-              {businessNavigation.map((item) =>
-                renderNavItem(item)
+              {businessNavigation.map(
+                (item) =>
+                  renderNavItem(item)
               )}
             </nav>
           </div>
 
           <div className="fx-sidebar-spacer" />
 
-          {/* PROFILE CARD */}
+          {/* PROFILE */}
+
           <button
             type="button"
             className="fx-sidebar-profile"
-            onClick={() => go(`/k/${slug}/manage`)}
+            onClick={() =>
+              go(`/k/${slug}/manage`)
+            }
           >
             <span className="fx-profile-avatar">
-              {String(restaurantName).slice(0, 1).toUpperCase()}
+              {String(
+                restaurantName
+              )
+                .slice(0, 1)
+                .toUpperCase()}
             </span>
 
             <span className="fx-profile-info">
-              <strong>{restaurantName}</strong>
-              <small>View Restaurant Profile</small>
+              <strong>
+                {restaurantName}
+              </strong>
+
+              <small>
+                View Restaurant Profile
+              </small>
             </span>
 
-            <Icon name="chevron" size={18} />
+            <Icon
+              name="chevron"
+              size={18}
+            />
           </button>
 
           {/* LOGOUT */}
-          <a href="/api/auth/signout" className="fx-sidebar-logout">
-            <Icon name="logout" size={19} />
-            <span>Logout</span>
+
+          <a
+            href="/api/auth/signout"
+            className="fx-sidebar-logout"
+          >
+            <Icon
+              name="logout"
+              size={19}
+            />
+
+            <span>
+              Logout
+            </span>
           </a>
         </div>
       </aside>
 
-      {/* MOBILE DRAWER */}
+      {/* =====================================================
+          MOBILE DRAWER
+          ===================================================== */}
+
       {mobileMenu && (
         <div
           className="fx-mobile-overlay"
-          onClick={() => setMobileMenu(false)}
+          onClick={() =>
+            setMobileMenu(false)
+          }
         >
           <aside
             className="fx-mobile-drawer"
-            onClick={(event) => event.stopPropagation()}
+            onClick={(event) =>
+              event.stopPropagation()
+            }
           >
+
             {/* DRAWER HEADER */}
+
             <div className="fx-drawer-header">
               <div>
-                <div className="fx-drawer-brand">Man.ko</div>
+                <div className="fx-drawer-brand">
+                  Man.ko
+                </div>
+
                 <div className="fx-drawer-subtitle">
                   Restaurant Workspace
                 </div>
@@ -420,136 +525,233 @@ export default function KitchenShell({
               <button
                 type="button"
                 className="fx-drawer-close"
-                onClick={() => setMobileMenu(false)}
+                onClick={() =>
+                  setMobileMenu(false)
+                }
                 aria-label="Close menu"
               >
-                <Icon name="close" size={22} />
+                <Icon
+                  name="close"
+                  size={22}
+                />
               </button>
             </div>
 
             {/* WORKSPACE */}
+
             <div className="fx-drawer-section">
               <div className="fx-drawer-section-title">
                 WORKSPACE
               </div>
 
-              {mainNavigation.map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  className={`fx-drawer-item ${
-                    active === item.key ? "active" : ""
-                  }`}
-                  onClick={() => go(item.path)}
-                >
-                  <Icon name={item.icon} size={20} />
-                  <span>{item.label}</span>
+              {mainNavigation.map(
+                (item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    className={`fx-drawer-item ${
+                      active ===
+                      item.key
+                        ? "active"
+                        : ""
+                    }`}
+                    onClick={() =>
+                      go(item.path)
+                    }
+                  >
+                    <Icon
+                      name={
+                        item.icon
+                      }
+                      size={20}
+                    />
 
-                  {item.badge && item.badge > 0 ? (
-                    <b>{item.badge}</b>
-                  ) : null}
-                </button>
-              ))}
+                    <span>
+                      {item.label}
+                    </span>
+
+                    {item.badge &&
+                    item.badge > 0 ? (
+                      <b>
+                        {item.badge}
+                      </b>
+                    ) : null}
+                  </button>
+                )
+              )}
             </div>
 
             {/* MANAGEMENT */}
+
             <div className="fx-drawer-section">
               <div className="fx-drawer-section-title">
                 MANAGEMENT
               </div>
 
-              {managementNavigation.map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  className="fx-drawer-item"
-                  onClick={() => {
-                    if (item.path) {
-                      go(item.path);
+              {managementNavigation.map(
+                (item) => (
+                  <button
+                    key={
+                      item.label
                     }
-                  }}
-                >
-                  <Icon name={item.icon} size={20} />
-                  <span>{item.label}</span>
-                </button>
-              ))}
+                    type="button"
+                    className={`fx-drawer-item ${
+                      active ===
+                      item.key
+                        ? "active"
+                        : ""
+                    }`}
+                    onClick={() => {
+                      if (
+                        item.path
+                      ) {
+                        go(
+                          item.path
+                        );
+                      }
+                    }}
+                  >
+                    <Icon
+                      name={
+                        item.icon
+                      }
+                      size={20}
+                    />
+
+                    <span>
+                      {item.label}
+                    </span>
+                  </button>
+                )
+              )}
             </div>
 
             {/* BUSINESS */}
+
             <div className="fx-drawer-section">
               <div className="fx-drawer-section-title">
                 BUSINESS
               </div>
 
-              {businessNavigation.map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  className="fx-drawer-item fx-nav-disabled"
-                >
-                  <Icon name={item.icon} size={20} />
-                  <span>{item.label}</span>
-                </button>
-              ))}
+              {businessNavigation.map(
+                (item) => (
+                  <button
+                    key={
+                      item.label
+                    }
+                    type="button"
+                    className="fx-drawer-item fx-nav-disabled"
+                  >
+                    <Icon
+                      name={
+                        item.icon
+                      }
+                      size={20}
+                    />
+
+                    <span>
+                      {item.label}
+                    </span>
+                  </button>
+                )
+              )}
             </div>
 
             <div className="fx-drawer-spacer" />
 
             {/* PROFILE */}
+
             <button
               type="button"
               className="fx-drawer-profile"
-              onClick={() => go(`/k/${slug}/manage`)}
+              onClick={() =>
+                go(`/k/${slug}/manage`)
+              }
             >
               <span className="fx-profile-avatar">
-                {String(restaurantName)
+                {String(
+                  restaurantName
+                )
                   .slice(0, 1)
                   .toUpperCase()}
               </span>
 
               <span className="fx-profile-info">
-                <strong>{restaurantName}</strong>
-                <small>View Restaurant Profile</small>
+                <strong>
+                  {restaurantName}
+                </strong>
+
+                <small>
+                  View Restaurant Profile
+                </small>
               </span>
 
-              <Icon name="chevron" size={18} />
+              <Icon
+                name="chevron"
+                size={18}
+              />
             </button>
 
             {/* LOGOUT */}
+
             <a
               href="/api/auth/signout"
               className="fx-drawer-logout"
             >
-              <Icon name="logout" size={20} />
-              <span>Logout</span>
+              <Icon
+                name="logout"
+                size={20}
+              />
+
+              <span>
+                Logout
+              </span>
             </a>
           </aside>
         </div>
       )}
 
-      {/* MAIN */}
+      {/* =====================================================
+          MAIN
+          ===================================================== */}
+
       <div className="fx-main">
+
         {/* TOP BAR */}
+
         <header className="fx-topbar">
           <div className="fx-topbar-left">
+
             <div className="fx-mobile-logo">
-              <strong>Man.ko</strong>
-              <span>Powered by FEXONIC</span>
+              <strong>
+                Man.ko
+              </strong>
+
+              <span>
+                Powered by FEXONIC
+              </span>
             </div>
 
             <div className="fx-desktop-breadcrumb">
-              <span>Kitchen Dashboard</span>
+              <span>
+                Kitchen Dashboard
+              </span>
             </div>
           </div>
 
           <div className="fx-topbar-right">
+
             {/* NOTIFICATION */}
+
             <button
               type="button"
               className="fx-notification-button"
               aria-label="Notifications"
             >
-              <Icon name="bell" size={21} />
+              <Icon
+                name="bell"
+                size={21}
+              />
 
               {newOrders > 0 && (
                 <span className="fx-notification-dot" />
@@ -557,62 +759,103 @@ export default function KitchenShell({
             </button>
 
             {/* MOBILE MENU */}
+
             <button
               type="button"
               className="fx-mobile-menu-button"
-              onClick={() => setMobileMenu(true)}
+              onClick={() =>
+                setMobileMenu(true)
+              }
               aria-label="Open menu"
             >
-              <Icon name="menuIcon" size={23} />
+              <Icon
+                name="menuIcon"
+                size={23}
+              />
             </button>
 
             {/* DESKTOP PROFILE */}
+
             <button
               type="button"
               className="fx-topbar-profile"
-              onClick={() => go(`/k/${slug}/manage`)}
+              onClick={() =>
+                go(`/k/${slug}/manage`)
+              }
             >
               <span className="fx-profile-avatar">
-                {String(restaurantName)
+                {String(
+                  restaurantName
+                )
                   .slice(0, 1)
                   .toUpperCase()}
               </span>
 
               <span className="fx-topbar-profile-info">
-                <strong>{restaurantName}</strong>
-                <small>Restaurant</small>
+                <strong>
+                  {restaurantName}
+                </strong>
+
+                <small>
+                  Restaurant
+                </small>
               </span>
             </button>
           </div>
         </header>
 
         {/* CONTENT */}
-        <div className="fx-content">{children}</div>
+
+        <div className="fx-content">
+          {children}
+        </div>
 
         {/* MOBILE BOTTOM NAV */}
-        <nav className="fx-bottom-nav" aria-label="Kitchen navigation">
-          {mainNavigation.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              className={`fx-bottom-item ${
-                active === item.key ? "active" : ""
-              }`}
-              onClick={() => go(item.path)}
-            >
-              <span className="fx-bottom-icon">
-                <Icon name={item.icon} size={20} />
 
-                {item.badge && item.badge > 0 ? (
-                  <b>{item.badge}</b>
-                ) : null}
-              </span>
+        <nav
+          className="fx-bottom-nav"
+          aria-label="Kitchen navigation"
+        >
+          {mainNavigation.map(
+            (item) => (
+              <button
+                key={item.key}
+                type="button"
+                className={`fx-bottom-item ${
+                  active ===
+                  item.key
+                    ? "active"
+                    : ""
+                }`}
+                onClick={() =>
+                  go(item.path)
+                }
+              >
+                <span className="fx-bottom-icon">
+                  <Icon
+                    name={
+                      item.icon
+                    }
+                    size={20}
+                  />
 
-              <span>
-                {item.key === "manage" ? "Tables" : item.label}
-              </span>
-            </button>
-          ))}
+                  {item.badge &&
+                  item.badge > 0 ? (
+                    <b>
+                      {item.badge}
+                    </b>
+                  ) : null}
+                </span>
+
+                <span>
+                  {item.key ===
+                  "manage"
+                    ? "Tables"
+                    : item.label}
+                </span>
+              </button>
+            )
+          )}
         </nav>
       </div>
     </main>

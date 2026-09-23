@@ -5,11 +5,14 @@ import {
   useMemo,
   useState,
 } from "react";
-import "./customer.css"
+import "./customer.css";
+
 type CustomerParams = {
   slug: string;
   tableId: string;
 };
+
+type CustomerSlotCode = "A" | "B" | "C" | "D";
 
 type Restaurant = {
   id: string;
@@ -92,6 +95,24 @@ const requestOptions: {
   },
 ];
 
+const CUSTOMER_SLOTS: CustomerSlotCode[] = [
+  "A",
+  "B",
+  "C",
+  "D",
+];
+
+function isCustomerSlot(
+  value: string | null
+): value is CustomerSlotCode {
+  return (
+    value === "A" ||
+    value === "B" ||
+    value === "C" ||
+    value === "D"
+  );
+}
+
 export default function Customer({
   params,
 }: {
@@ -99,6 +120,28 @@ export default function Customer({
 }) {
   const [p, setP] =
     useState<CustomerParams | null>(null);
+
+  /*
+   * =========================================================
+   * CUSTOMER SLOT
+   * =========================================================
+   *
+   * QR URL:
+   *
+   * /r/restaurant-slug/t/table-id?customer=A
+   * /r/restaurant-slug/t/table-id?customer=B
+   * /r/restaurant-slug/t/table-id?customer=C
+   * /r/restaurant-slug/t/table-id?customer=D
+   *
+   * UI remains unchanged except for showing the customer label.
+   */
+
+  const [customerSlot, setCustomerSlot] =
+    useState<CustomerSlotCode | null>(null);
+
+  const customerLabel = customerSlot
+    ? `Customer ${customerSlot}`
+    : "Customer";
 
   const [restaurant, setRestaurant] =
     useState<Restaurant | null>(null);
@@ -156,8 +199,27 @@ export default function Customer({
     let mounted = true;
 
     params.then((value) => {
-      if (mounted) {
-        setP(value);
+      if (!mounted) return;
+
+      setP(value);
+
+      /*
+       * Read ?customer=A/B/C/D
+       */
+      if (typeof window !== "undefined") {
+        const query =
+          new URLSearchParams(
+            window.location.search
+          );
+
+        const customer =
+          query.get("customer");
+
+        if (isCustomerSlot(customer)) {
+          setCustomerSlot(customer);
+        } else {
+          setCustomerSlot(null);
+        }
       }
     });
 
@@ -488,76 +550,122 @@ export default function Customer({
      PLACE ORDER
   ========================================================== */
 
-async function order() {
-  if (!restaurant || !p || ordering) return;
+  async function order() {
+    if (!restaurant || !p || ordering) {
+      return;
+    }
 
-  const rows = items
-    .filter((item) => cart[item.id] > 0)
-    .map((item) => ({
-      menu_item_id: item.id,
-      quantity: cart[item.id],
-    }));
+    /*
+     * Customer A/B/C/D is required for the
+     * new QR-based customer separation.
+     */
+    if (!customerSlot) {
+      setMsg(
+        "This table QR is missing a customer code. Please scan the correct Customer A, B, C or D QR."
+      );
+      return;
+    }
 
-  if (rows.length === 0) {
-    setMsg("Add something to your cart first.");
-    return;
-  }
+    const rows = items
+      .filter(
+        (item) =>
+          cart[item.id] > 0
+      )
+      .map((item) => ({
+        menu_item_id: item.id,
+        quantity: cart[item.id],
+      }));
 
-  setOrdering(true);
-  setMsg("");
+    if (rows.length === 0) {
+      setMsg(
+        "Add something to your cart first."
+      );
+      return;
+    }
 
-  try {
-    const response = await fetch("/api/orders", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        restaurant_id: restaurant.id,
-        table_id: p.tableId,
-        items: rows,
-        device_key: getDeviceKey(),
-        device_name: "Customer Device",
-      }),
-      cache: "no-store",
-    });
-
-    const text = await response.text();
-
-    let data: any = {};
+    setOrdering(true);
+    setMsg("");
 
     try {
-      data = text ? JSON.parse(text) : {};
-    } catch {
-      throw new Error("Invalid server response.");
-    }
+      const response = await fetch(
+        "/api/orders",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            restaurant_id:
+              restaurant.id,
 
-    if (!response.ok) {
-      throw new Error(
-        data?.error || "Could not place your order."
+            table_id:
+              p.tableId,
+
+            /*
+             * New Customer A/B/C/D value.
+             */
+            customer:
+              customerSlot,
+
+            items: rows,
+
+            device_key:
+              getDeviceKey(),
+
+            device_name:
+              "Customer Device",
+          }),
+          cache: "no-store",
+        }
       );
+
+      const text =
+        await response.text();
+
+      let data: any = {};
+
+      try {
+        data = text
+          ? JSON.parse(text)
+          : {};
+      } catch {
+        throw new Error(
+          "Invalid server response."
+        );
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error ||
+            "Could not place your order."
+        );
+      }
+
+      setCart({});
+
+      setOrderSuccess({
+        id: String(data.id),
+        total: Number(
+          data.total ?? cartTotal
+        ),
+      });
+
+      playSuccessSound();
+    } catch (error: any) {
+      console.error(
+        "Order error:",
+        error
+      );
+
+      setMsg(
+        error?.message ||
+          "Could not place your order."
+      );
+    } finally {
+      setOrdering(false);
     }
-
-    // Server confirmed the order.
-    setCart({});
-
-    setOrderSuccess({
-      id: String(data.id),
-      total: Number(data.total ?? cartTotal),
-    });
-
-    // Non-blocking success feedback
-    playSuccessSound();
-  } catch (error: any) {
-    console.error("Order error:", error);
-
-    setMsg(
-      error?.message || "Could not place your order."
-    );
-  } finally {
-    setOrdering(false);
   }
-}
 
   /* =========================================================
      SUPPORT
@@ -596,6 +704,17 @@ async function order() {
       return;
     }
 
+    /*
+     * Support request also carries
+     * the customer code.
+     */
+    if (!customerSlot) {
+      setMsg(
+        "This table QR is missing a customer code."
+      );
+      return;
+    }
+
     try {
       setSendingRequest(true);
 
@@ -614,6 +733,12 @@ async function order() {
 
               table_id:
                 p.tableId,
+
+              /*
+               * New Customer A/B/C/D value.
+               */
+              customer:
+                customerSlot,
 
               type:
                 selectedRequest,
@@ -770,25 +895,47 @@ async function order() {
               </strong>
             </div>
 
-<button
-  type="button"
-  className="fxc-help-button"
-  onClick={openSupport}
-  aria-label="Need something? Ask the waiter"
->
-  <span className="fxc-help-icon">
-    ✦
-  </span>
+            {customerSlot && (
+              <div
+                className="fxc-table-pill"
+                title={`Ordering as ${customerLabel}`}
+              >
+                <span className="fxc-live-dot" />
 
-  <span className="fxc-help-copy">
-    <strong>Need something?</strong>
-    <small>Ask waiter</small>
-  </span>
+                <span>
+                  CUSTOMER
+                </span>
 
-  <span className="fxc-help-arrow">
-    →
-  </span>
-</button>
+                <strong>
+                  {customerSlot}
+                </strong>
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="fxc-help-button"
+              onClick={openSupport}
+              aria-label="Need something? Ask the waiter"
+            >
+              <span className="fxc-help-icon">
+                ✦
+              </span>
+
+              <span className="fxc-help-copy">
+                <strong>
+                  Need something?
+                </strong>
+
+                <small>
+                  Ask waiter
+                </small>
+              </span>
+
+              <span className="fxc-help-arrow">
+                →
+              </span>
+            </button>
 
           </div>
         </div>
@@ -803,7 +950,15 @@ async function order() {
 
           <div className="fxc-hero-badge">
             <span className="fxc-hero-dot" />
+
             ORDER FROM YOUR TABLE
+
+            {customerSlot && (
+              <>
+                <span>·</span>
+                {customerLabel.toUpperCase()}
+              </>
+            )}
           </div>
 
           <h1>
@@ -927,6 +1082,7 @@ async function order() {
             }
           >
             <span>☷</span>
+
             <strong>
               Filter
             </strong>
@@ -1081,6 +1237,7 @@ async function order() {
           </div>
         ) : visibleItems.length === 0 ? (
           <div className="fxc-empty">
+
             <div className="fxc-empty-icon">
               ⌕
             </div>
@@ -1109,6 +1266,7 @@ async function order() {
             >
               Show all items
             </button>
+
           </div>
         ) : (
           <div className="fxc-food-grid">
@@ -1274,54 +1432,70 @@ async function order() {
       ====================================================== */}
 
       {itemCount > 0 && (
-  <div className="fxc-cart-bar">
-    <div className="fxc-cart-inner">
+        <div className="fxc-cart-bar">
 
-      <div className="fxc-cart-info">
-        <div className="fxc-cart-count">
-          {itemCount}
+          <div className="fxc-cart-inner">
+
+            <div className="fxc-cart-info">
+
+              <div className="fxc-cart-count">
+                {itemCount}
+              </div>
+
+              <div className="fxc-cart-summary">
+
+                <span>
+                  {itemCount === 1
+                    ? "1 item selected"
+                    : `${itemCount} items selected`}
+                </span>
+
+                <strong>
+                  ₹{cartTotal.toFixed(0)}
+                </strong>
+
+              </div>
+
+            </div>
+
+            <button
+              type="button"
+              className="fxc-order-button"
+              onClick={order}
+              disabled={ordering}
+            >
+              {ordering ? (
+                <>
+                  <span className="fxc-order-spinner" />
+
+                  <span>
+                    Placing order...
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span>
+                    Place order
+                  </span>
+
+                  <b>
+                    →
+                  </b>
+                </>
+              )}
+            </button>
+
+          </div>
+
+          <div className="fxc-cart-trust">
+            <span>✓</span>
+
+            Secure table-linked ordering · Sent directly to kitchen
+          </div>
+
         </div>
+      )}
 
-        <div className="fxc-cart-summary">
-          <span>
-            {itemCount === 1
-              ? "1 item selected"
-              : `${itemCount} items selected`}
-          </span>
-
-          <strong>
-            ₹{cartTotal.toFixed(0)}
-          </strong>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        className="fxc-order-button"
-        onClick={order}
-        disabled={ordering}
-      >
-        {ordering ? (
-          <>
-            <span className="fxc-order-spinner" />
-            <span>Placing order...</span>
-          </>
-        ) : (
-          <>
-            <span>Place order</span>
-            <b>→</b>
-          </>
-        )}
-      </button>
-
-    </div>
-
-    <div className="fxc-cart-trust">
-      <span>✓</span>
-      Secure table-linked ordering · Sent directly to kitchen
-    </div>
-  </div>
-)}
       {/* =====================================================
           SUPPORT MODAL
       ====================================================== */}
@@ -1419,6 +1593,7 @@ async function order() {
                             )
                           }
                         >
+
                           <span className="fxc-request-icon">
                             {
                               option.icon
@@ -1426,6 +1601,7 @@ async function order() {
                           </span>
 
                           <span className="fxc-request-copy">
+
                             <strong>
                               {
                                 option.label
@@ -1437,6 +1613,7 @@ async function order() {
                                 option.description
                               }
                             </small>
+
                           </span>
 
                           <span className="fxc-request-check">
@@ -1444,6 +1621,7 @@ async function order() {
                               ? "✓"
                               : "›"}
                           </span>
+
                         </button>
                       );
                     }
@@ -1494,7 +1672,9 @@ async function order() {
                 </button>
 
                 <div className="fxc-support-note">
+
                   <span>✓</span>
+
                   <p>
                     Your request is linked
                     to Table{" "}
@@ -1504,7 +1684,17 @@ async function order() {
                         6
                       )}
                     </strong>
+
+                    {customerSlot && (
+                      <>
+                        {" · "}
+                        <strong>
+                          {customerLabel}
+                        </strong>
+                      </>
+                    )}
                   </p>
+
                 </div>
 
               </>
@@ -1599,7 +1789,9 @@ async function order() {
 
       {msg && restaurant && (
         <div className="fxc-error-toast">
+
           <span>!</span>
+
           <p>{msg}</p>
 
           <button
@@ -1610,6 +1802,7 @@ async function order() {
           >
             ×
           </button>
+
         </div>
       )}
 
