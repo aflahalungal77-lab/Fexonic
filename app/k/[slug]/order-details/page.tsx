@@ -42,14 +42,12 @@ type Order = {
   billing_session_id: string;
   total: number;
   status: string;
+  need: string | null;
   created_at: string;
 
   table: Table | null;
-
   customer: CustomerSlot | null;
-
   device: Device | null;
-
   order_items: OrderItem[];
 };
 
@@ -62,23 +60,46 @@ type Restaurant = {
 
 type ApiResponse = {
   restaurant: Restaurant;
+
   orders: Order[];
 
-  /*
-   * TOTAL HISTORICAL ORDERS.
-   *
-   * This does NOT depend on active
-   * billing sessions.
-   */
   customerOrderCount: number;
+
+  tableOrderCounts: Record<
+    string,
+    number
+  >;
+
+  /* NEW */
+  dailyCustomerOrderCount: number;
+
+  dailyTableOrderCounts: Record<
+    string,
+    number
+  >;
+
+  /* NEW */
+  monthlyCustomerOrderCount: number;
+
+  monthlyTableOrderCounts: Record<
+    string,
+    number
+  >;
 };
 
 type TableCard = {
   table: Table;
+
   orders: Order[];
+
   total: number;
+
   itemCount: number;
+
   orderCount: number;
+
+  activeOrderCount: number;
+
   lastOrderAt: string;
 };
 
@@ -154,10 +175,10 @@ function statusText(
 
 function buildTableCard(
   table: Table,
-  tableOrders: Order[]
+  tableOrders: Order[],
+  cumulativeCustomerCount: number
 ): TableCard {
   let total = 0;
-
   let itemCount = 0;
 
   for (
@@ -202,6 +223,9 @@ function buildTableCard(
     itemCount,
 
     orderCount:
+      cumulativeCustomerCount,
+
+    activeOrderCount:
       sortedOrders.length,
 
     lastOrderAt:
@@ -235,32 +259,65 @@ export default function OrderDetailsPage() {
   ] =
     useState<Order[]>([]);
 
-  /*
-   * =====================================================
-   * HISTORICAL ORDER COUNT
-   * =====================================================
-   *
-   * This comes from the backend.
-   *
-   * It is NOT based on `orders`.
-   *
-   * Therefore:
-   *
-   * A B C D = 4
-   *
-   * Done
-   *
-   * Active orders = 0
-   * Historical count = 4
-   *
-   * New A = 5
-   */
+  /* =====================================================
+     TOTAL
+     ===================================================== */
 
   const [
     customerOrderCount,
     setCustomerOrderCount,
   ] =
     useState(0);
+
+  const [
+    tableOrderCounts,
+    setTableOrderCounts,
+  ] =
+    useState<
+      Record<string, number>
+    >({});
+
+  /* =====================================================
+     DAILY
+     ===================================================== */
+
+  const [
+    dailyCustomerOrderCount,
+    setDailyCustomerOrderCount,
+  ] =
+    useState(0);
+
+  const [
+    dailyTableOrderCounts,
+    setDailyTableOrderCounts,
+  ] =
+    useState<
+      Record<string, number>
+    >({});
+
+  /* =====================================================
+     MONTHLY
+     ===================================================== */
+
+  const [
+    monthlyCustomerOrderCount,
+    setMonthlyCustomerOrderCount,
+  ] =
+    useState(0);
+
+  const [
+    monthlyTableOrderCounts,
+    setMonthlyTableOrderCounts,
+  ] =
+    useState<
+      Record<string, number>
+    >({});
+
+  const [
+    finishingBill,
+    setFinishingBill,
+  ] =
+    useState(false);
 
   const [
     loading,
@@ -348,7 +405,6 @@ export default function OrderDetailsPage() {
               {
                 method:
                   "GET",
-
                 cache:
                   "no-store",
               }
@@ -369,18 +425,46 @@ export default function OrderDetailsPage() {
             data.restaurant
           );
 
-          /*
-           * IMPORTANT:
-           *
-           * Always update from backend.
-           *
-           * Backend counts ALL orders.
-           */
+          /* TOTAL */
+
           setCustomerOrderCount(
             Number(
               data.customerOrderCount ||
                 0
             )
+          );
+
+          setTableOrderCounts(
+            data.tableOrderCounts ||
+              {}
+          );
+
+          /* DAILY */
+
+          setDailyCustomerOrderCount(
+            Number(
+              data.dailyCustomerOrderCount ||
+                0
+            )
+          );
+
+          setDailyTableOrderCounts(
+            data.dailyTableOrderCounts ||
+              {}
+          );
+
+          /* MONTHLY */
+
+          setMonthlyCustomerOrderCount(
+            Number(
+              data.monthlyCustomerOrderCount ||
+                0
+            )
+          );
+
+          setMonthlyTableOrderCounts(
+            data.monthlyTableOrderCounts ||
+              {}
           );
 
           const freshOrders =
@@ -390,9 +474,9 @@ export default function OrderDetailsPage() {
             freshOrders
           );
 
-          /* =============================================
+          /* =================================================
              UPDATE OPEN DRAWER
-             ============================================= */
+             ================================================= */
 
           const currentSelected =
             selectedTableRef.current;
@@ -416,7 +500,18 @@ export default function OrderDetailsPage() {
               const updatedCard =
                 buildTableCard(
                   currentSelected.table,
-                  updatedOrders
+                  updatedOrders,
+                  Number(
+                    (
+                      data
+                        .tableOrderCounts ||
+                      {}
+                    )[
+                      currentSelected
+                        .table
+                        .id
+                    ] || 0
+                  )
                 );
 
               setSelectedTable(
@@ -524,7 +619,7 @@ export default function OrderDetailsPage() {
 
       for (
         const [
-          ,
+          tableId,
           tableOrders,
         ] of tableMap
       ) {
@@ -539,7 +634,12 @@ export default function OrderDetailsPage() {
         cards.push(
           buildTableCard(
             table,
-            tableOrders
+            tableOrders,
+            Number(
+              tableOrderCounts[
+                tableId
+              ] || 0
+            )
           )
         );
       }
@@ -555,7 +655,10 @@ export default function OrderDetailsPage() {
             }
           )
       );
-    }, [orders]);
+    }, [
+      orders,
+      tableOrderCounts,
+    ]);
 
   /* =====================================================
      SEARCH + FILTER
@@ -692,50 +795,44 @@ export default function OrderDetailsPage() {
           (
             sum,
             order
-          ) => {
-            return (
-              sum +
+          ) =>
+            sum +
+            (
+              order.order_items ||
+              []
+            ).reduce(
               (
-                order.order_items ||
-                []
-              ).reduce(
-                (
-                  itemSum,
-                  item
-                ) =>
-                  itemSum +
-                  Number(
-                    item.quantity ||
-                      0
-                  ),
-                0
-              )
-            );
-          },
+                itemSum,
+                item
+              ) =>
+                itemSum +
+                Number(
+                  item.quantity ||
+                    0
+                ),
+              0
+            ),
           0
         );
 
       return {
-        tables:
-          tableCards.length,
 
-        orders:
-          orders.length,
 
-        items:
-          itemCount,
-
-        /*
-         * DO NOT calculate this
-         * from active orders.
-         */
         customerOrders:
           customerOrderCount,
+
+        dailyCustomerOrders:
+          dailyCustomerOrderCount,
+
+        monthlyCustomerOrders:
+          monthlyCustomerOrderCount,
       };
     }, [
       tableCards,
       orders,
       customerOrderCount,
+      dailyCustomerOrderCount,
+      monthlyCustomerOrderCount,
     ]);
 
   /* =====================================================
@@ -753,26 +850,29 @@ export default function OrderDetailsPage() {
      ===================================================== */
 
   async function handleDone() {
-    if (
-      !selectedTable
-    ) {
+    if (finishingBill) {
+      return;
+    }
+
+    if (!selectedTable) {
       return;
     }
 
     const billingSessionId =
-      selectedTable
-        .orders[0]
+      selectedTable.orders[0]
         ?.billing_session_id;
 
-    if (
-      !billingSessionId
-    ) {
+    if (!billingSessionId) {
       console.error(
         "Billing session ID missing"
       );
 
       return;
     }
+
+    setFinishingBill(
+      true
+    );
 
     try {
       const response =
@@ -789,7 +889,6 @@ export default function OrderDetailsPage() {
 
             body: JSON.stringify({
               slug,
-
               billingSessionId,
             }),
           }
@@ -805,14 +904,6 @@ export default function OrderDetailsPage() {
         );
       }
 
-      /*
-       * Remove active orders
-       * from the current screen.
-       *
-       * DO NOT TOUCH
-       * customerOrderCount.
-       */
-
       const completedOrderIds =
         selectedTable.orders.map(
           (order) =>
@@ -820,9 +911,7 @@ export default function OrderDetailsPage() {
         );
 
       setOrders(
-        (
-          currentOrders
-        ) =>
+        (currentOrders) =>
           currentOrders.filter(
             (order) =>
               !completedOrderIds.includes(
@@ -831,28 +920,13 @@ export default function OrderDetailsPage() {
           )
       );
 
-      /*
-       * IMPORTANT:
-       *
-       * No:
-       *
-       * setCustomerOrderCount(...)
-       *
-       * here.
-       *
-       * Historical count remains.
-       */
-
       setSelectedTable(
         null
       );
 
-      /*
-       * Refresh from backend so
-       * the persistent count remains
-       * authoritative.
-       */
-      await loadOrders(true);
+      await loadOrders(
+        true
+      );
     } catch (
       error: any
     ) {
@@ -864,6 +938,10 @@ export default function OrderDetailsPage() {
       setError(
         error?.message ||
           "Failed to complete bill"
+      );
+    } finally {
+      setFinishingBill(
+        false
       );
     }
   }
@@ -893,6 +971,7 @@ export default function OrderDetailsPage() {
   return (
     <>
       <div className="fx-order-details-page">
+
         {/* HEADER */}
 
         <header className="fx-od-header">
@@ -938,42 +1017,54 @@ export default function OrderDetailsPage() {
           </button>
         </header>
 
-        {/* STATS */}
+        {/* =================================================
+            STATS
+            ================================================= */}
 
         <section className="fx-od-summary-grid">
-          <div className="fx-od-summary-card">
-            <span>
-              Active Tables
-            </span>
 
-            <strong>
-              {stats.tables}
-            </strong>
-          </div>
 
-          <div className="fx-od-summary-card">
-            <span>
-              Orders
-            </span>
-
-            <strong>
-              {stats.orders}
-            </strong>
-          </div>
-
-          <div className="fx-od-summary-card">
-            <span>
-              Items
-            </span>
-
-            <strong>
-              {stats.items}
-            </strong>
-          </div>
+          {/* DAILY */}
 
           <div className="fx-od-summary-card highlight">
             <span>
-              Orders by Table
+              Daily Orders by Table
+            </span>
+
+            <strong>
+              {
+                stats.dailyCustomerOrders
+              }
+            </strong>
+
+            <small>
+              Today
+            </small>
+          </div>
+
+          {/* MONTHLY */}
+
+          <div className="fx-od-summary-card highlight">
+            <span>
+              Monthly Orders by Table
+            </span>
+
+            <strong>
+              {
+                stats.monthlyCustomerOrders
+              }
+            </strong>
+
+            <small>
+              Current month
+            </small>
+          </div>
+
+          {/* TOTAL */}
+
+          <div className="fx-od-summary-card highlight">
+            <span>
+              Total Orders by Table
             </span>
 
             <strong>
@@ -981,7 +1072,12 @@ export default function OrderDetailsPage() {
                 stats.customerOrders
               }
             </strong>
+
+            <small>
+              All time
+            </small>
           </div>
+
         </section>
 
         {/* TOOLBAR */}
@@ -1060,9 +1156,7 @@ export default function OrderDetailsPage() {
             <button
               type="button"
               onClick={() =>
-                loadOrders(
-                  false
-                )
+                loadOrders(false)
               }
             >
               Retry
@@ -1081,7 +1175,7 @@ export default function OrderDetailsPage() {
               </div>
 
               <h3>
-                No table orders
+                No active table orders
               </h3>
 
               <p>
@@ -1105,9 +1199,7 @@ export default function OrderDetailsPage() {
                   <button
                     type="button"
                     key={
-                      card
-                        .table
-                        .id
+                      card.table.id
                     }
                     className="fx-table-bill-card active"
                     onClick={() =>
@@ -1170,6 +1262,7 @@ export default function OrderDetailsPage() {
                     <div className="fx-tbc-divider" />
 
                     <div className="fx-tbc-meta">
+
                       <span>
                         {
                           card.orderCount
@@ -1177,20 +1270,20 @@ export default function OrderDetailsPage() {
                         {
                           card.orderCount ===
                           1
-                            ? "order"
-                            : "orders"
+                            ? "customer"
+                            : "customers"
                         }
                       </span>
 
                       <span>
                         {
-                          card.itemCount
+                          card.activeOrderCount
                         }{" "}
                         {
-                          card.itemCount ===
+                          card.activeOrderCount ===
                           1
-                            ? "item"
-                            : "items"
+                            ? "active order"
+                            : "active orders"
                         }
                       </span>
 
@@ -1215,18 +1308,15 @@ export default function OrderDetailsPage() {
       {selectedTable && (
         <div
           className="fx-bill-overlay"
-          onClick={
-            closeBill
-          }
+          onClick={closeBill}
         >
           <aside
             className="fx-bill-drawer"
-            onClick={(
-              event
-            ) =>
+            onClick={(event) =>
               event.stopPropagation()
             }
           >
+
             <div className="fx-bill-header">
               <div>
                 <span>
@@ -1244,9 +1334,9 @@ export default function OrderDetailsPage() {
                 <p>
                   {
                     selectedTable
-                      .orderCount
+                      .activeOrderCount
                   }{" "}
-                  orders ·{" "}
+                  active orders ·{" "}
                   {
                     selectedTable
                       .itemCount
@@ -1258,9 +1348,7 @@ export default function OrderDetailsPage() {
               <button
                 type="button"
                 className="fx-bill-close"
-                onClick={
-                  closeBill
-                }
+                onClick={closeBill}
                 aria-label="Close bill"
               >
                 ×
@@ -1268,6 +1356,7 @@ export default function OrderDetailsPage() {
             </div>
 
             <div className="fx-bill-paper">
+
               <div className="fx-bill-brand">
                 {restaurant?.name ||
                   "Restaurant"}
@@ -1278,6 +1367,7 @@ export default function OrderDetailsPage() {
               </div>
 
               <div className="fx-bill-info">
+
                 <div>
                   <span>
                     TABLE
@@ -1294,7 +1384,7 @@ export default function OrderDetailsPage() {
 
                 <div>
                   <span>
-                    ORDERS
+                    ORDERS BY TABLE
                   </span>
 
                   <strong>
@@ -1304,6 +1394,7 @@ export default function OrderDetailsPage() {
                     }
                   </strong>
                 </div>
+
               </div>
 
               <div className="fx-bill-line" />
@@ -1374,6 +1465,7 @@ export default function OrderDetailsPage() {
               </div>
 
               <div className="fx-bill-history">
+
                 <h3>
                   Order Timeline
                 </h3>
@@ -1389,6 +1481,7 @@ export default function OrderDetailsPage() {
                         order.id
                       }
                     >
+
                       <div className="fx-bill-order-dot">
                         {
                           index +
@@ -1397,6 +1490,7 @@ export default function OrderDetailsPage() {
                       </div>
 
                       <div className="fx-bill-order-content">
+
                         <div className="fx-bill-order-top">
                           <strong>
                             Order #
@@ -1417,10 +1511,11 @@ export default function OrderDetailsPage() {
                           </span>
                         </div>
 
+                        {/* CUSTOMER */}
+
                         <span>
                           {order.customer
-                            ? order.customer
-                                .label
+                            ? `Customer ${order.customer.slot_code}`
                             : "Customer"}
                         </span>
 
@@ -1429,6 +1524,8 @@ export default function OrderDetailsPage() {
                             order.created_at
                           )}
                         </span>
+
+                        {/* ITEMS */}
 
                         <div className="fx-bill-order-items">
                           {(
@@ -1454,6 +1551,64 @@ export default function OrderDetailsPage() {
                             )
                           )}
                         </div>
+
+                        {/* CUSTOMER NEED */}
+
+                        {order.need && (
+                          <div
+                            style={{
+                              marginTop:
+                                "8px",
+                              padding:
+                                "9px 10px",
+                              borderRadius:
+                                "10px",
+                              background:
+                                "#fffdf5",
+                              border:
+                                "1px solid #eee7c9",
+                            }}
+                          >
+                            <small
+                              style={{
+                                display:
+                                  "block",
+                                marginBottom:
+                                  "3px",
+                                fontSize:
+                                  "9px",
+                                fontWeight:
+                                  800,
+                                letterSpacing:
+                                  ".08em",
+                                textTransform:
+                                  "uppercase",
+                                color:
+                                  "#8b805c",
+                              }}
+                            >
+                              Customer need
+                            </small>
+
+                            <span
+                              style={{
+                                display:
+                                  "block",
+                                fontSize:
+                                  "12px",
+                                lineHeight:
+                                  1.45,
+                                fontWeight:
+                                  600,
+                                color:
+                                  "#403b29",
+                              }}
+                            >
+                              {order.need}
+                            </span>
+                          </div>
+                        )}
+
                       </div>
                     </div>
                   )
@@ -1461,24 +1616,28 @@ export default function OrderDetailsPage() {
               </div>
 
               <div className="fx-bill-note">
-                All orders from this
-                table are combined
-                into this billing
-                summary.
+                Orders by Table counts
+                each customer once per
+                billing session.
               </div>
+
             </div>
 
             <div className="fx-bill-footer">
               <button
                 type="button"
                 className="fx-bill-primary"
-                onClick={
-                  handleDone
+                onClick={handleDone}
+                disabled={
+                  finishingBill
                 }
               >
-                ✓ Done
+                {finishingBill
+                  ? "Closing..."
+                  : "Done"}
               </button>
             </div>
+
           </aside>
         </div>
       )}

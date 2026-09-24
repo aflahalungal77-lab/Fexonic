@@ -37,15 +37,7 @@ type Order = {
   total: number | string | null;
   created_at: string;
   table_id: string | null;
-
-  /*
-   * Customer A/B/C/D
-   */
   customer_slot_id: string | null;
-
-  /*
-   * Customer's special need.
-   */
   need: string | null;
 
   tables?: {
@@ -467,8 +459,6 @@ export default function OrdersPage({
     >
       <div className="ko-page">
 
-        {/* PAGE HEADER */}
-
         <section className="ko-page-header">
           <div>
             <p className="ko-eyebrow">
@@ -512,10 +502,7 @@ export default function OrdersPage({
           </button>
         </section>
 
-        {/* SUMMARY */}
-
         <section className="ko-summary">
-
           <div className="ko-summary-card">
             <span className="ko-summary-label">
               Total active
@@ -571,14 +558,10 @@ export default function OrdersPage({
               Waiting to serve
             </small>
           </div>
-
         </section>
-
-        {/* FILTER BAR */}
 
         <section className="ko-filter-wrap">
           <div className="ko-filter-scroll">
-
             <button
               type="button"
               className={
@@ -668,16 +651,11 @@ export default function OrdersPage({
                 {counts.ready}
               </b>
             </button>
-
           </div>
         </section>
 
-        {/* ORDERS */}
-
         <section className="ko-orders-section">
-
           <div className="ko-section-heading">
-
             <div>
               <p className="ko-eyebrow">
                 LIVE ORDERS
@@ -695,7 +673,6 @@ export default function OrdersPage({
               <i />
               Live
             </span>
-
           </div>
 
           {loading ? (
@@ -717,7 +694,6 @@ export default function OrdersPage({
             </div>
           ) : filteredOrders.length === 0 ? (
             <div className="ko-empty">
-
               <div className="ko-empty-icon">
                 ✓
               </div>
@@ -750,11 +726,9 @@ export default function OrdersPage({
                   View all orders
                 </button>
               )}
-
             </div>
           ) : (
             <div className="ko-order-grid">
-
               {filteredOrders.map(
                 (order) => {
                   const itemCount =
@@ -783,11 +757,7 @@ export default function OrdersPage({
                         order.id
                       }
                     >
-
-                      {/* TOP */}
-
                       <div className="ko-card-top">
-
                         <div
                           className={`ko-status ko-status-${order.status.toLowerCase()}`}
                         >
@@ -805,15 +775,10 @@ export default function OrdersPage({
                             order.created_at
                           )}
                         </span>
-
                       </div>
 
-                      {/* TABLE / ID */}
-
                       <div className="ko-order-heading">
-
                         <div>
-
                           <h3>
                             {order
                               .tables
@@ -834,7 +799,6 @@ export default function OrdersPage({
                               order.created_at
                             )}
                           </p>
-
                         </div>
 
                         <strong>
@@ -842,10 +806,7 @@ export default function OrdersPage({
                             order.total
                           )}
                         </strong>
-
                       </div>
-
-                      {/* CUSTOMER */}
 
                       {customerCode && (
                         <div
@@ -924,8 +885,6 @@ export default function OrdersPage({
                         </div>
                       )}
 
-                      {/* NEED */}
-
                       {order.need && (
                         <div
                           className="ko-order-need"
@@ -979,10 +938,7 @@ export default function OrdersPage({
                         </div>
                       )}
 
-                      {/* ITEMS */}
-
                       <div className="ko-items">
-
                         {(
                           order.order_items ||
                           []
@@ -1021,13 +977,9 @@ export default function OrdersPage({
                             </div>
                           )
                         )}
-
                       </div>
 
-                      {/* META */}
-
                       <div className="ko-card-meta">
-
                         <span>
                           {itemCount}{" "}
                           {itemCount ===
@@ -1049,13 +1001,9 @@ export default function OrdersPage({
                             →
                           </span>
                         </button>
-
                       </div>
 
-                      {/* ACTIONS */}
-
                       <div className="ko-actions">
-
                         {order.status ===
                           "NEW" && (
                           <>
@@ -1146,26 +1094,17 @@ export default function OrdersPage({
                               : "Mark as served ✓"}
                           </button>
                         )}
-
                       </div>
-
                     </article>
                   );
                 }
               )}
-
             </div>
           )}
-
         </section>
 
         <div className="ko-mobile-bottom-space" />
-
       </div>
-
-      {/* =====================================================
-          ORDER DETAIL SHEET
-      ====================================================== */}
 
       {selectedOrder && (
         <div
@@ -1180,13 +1119,10 @@ export default function OrdersPage({
               event.stopPropagation()
             }
           >
-
             <div className="ko-detail-handle" />
 
             <div className="ko-detail-header">
-
               <div>
-
                 <span
                   className={`ko-status ko-status-${selectedOrder.status.toLowerCase()}`}
                 >
@@ -1219,7 +1155,6 @@ export default function OrdersPage({
                     selectedOrder.created_at
                   )}
                 </p>
-
               </div>
 
               <button
@@ -1233,10 +1168,7 @@ export default function OrdersPage({
               >
                 ×
               </button>
-
             </div>
-
-            {/* CUSTOMER */}
 
             {selectedOrder
               .customer_slots
@@ -1326,8 +1258,6 @@ export default function OrdersPage({
               </div>
             )}
 
-            {/* CUSTOMER NEED */}
-
             {selectedOrder.need && (
               <div
                 style={{
@@ -1383,7 +1313,6 @@ export default function OrdersPage({
             )}
 
             <div className="ko-detail-items">
-
               {(
                 selectedOrder.order_items ||
                 []
@@ -1423,11 +1352,9 @@ export default function OrdersPage({
                   </div>
                 )
               )}
-
             </div>
 
             <div className="ko-detail-total">
-
               <span>
                 Total
               </span>
@@ -1437,11 +1364,9 @@ export default function OrdersPage({
                   selectedOrder.total
                 )}
               </strong>
-
             </div>
 
             <div className="ko-detail-actions">
-
               {selectedOrder.status ===
                 "NEW" && (
                 <>
@@ -1520,13 +1445,10 @@ export default function OrdersPage({
                   Mark as served ✓
                 </button>
               )}
-
             </div>
-
           </div>
         </div>
       )}
-
     </KitchenShell>
   );
 }

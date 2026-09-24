@@ -533,14 +533,6 @@ export async function POST(
         status:
           "NEW",
 
-        /*
-         * Customer's special request.
-         *
-         * Example:
-         * "Less spicy"
-         * "No onion"
-         * "Extra sauce"
-         */
         need:
           orderNeed || null,
       })

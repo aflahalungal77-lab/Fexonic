@@ -23,25 +23,18 @@ const supabase = createClient(
    GET
    ========================================================= */
 
-export async function GET(
-  request: NextRequest
-) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } =
-      new URL(request.url);
+    const { searchParams } = new URL(request.url);
 
-    const slug =
-      searchParams.get("slug")?.trim();
+    const slug = searchParams.get("slug")?.trim();
 
     if (!slug) {
       return NextResponse.json(
         {
-          error:
-            "Restaurant slug is required",
+          error: "Restaurant slug is required",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
@@ -54,9 +47,7 @@ export async function GET(
       error: restaurantError,
     } = await supabase
       .from("restaurants")
-      .select(
-        "id, name, slug, is_active"
-      )
+      .select("id, name, slug, is_active")
       .eq("slug", slug)
       .maybeSingle();
 
@@ -68,24 +59,18 @@ export async function GET(
 
       return NextResponse.json(
         {
-          error:
-            "Failed to load restaurant",
+          error: "Failed to load restaurant",
         },
-        {
-          status: 500,
-        }
+        { status: 500 }
       );
     }
 
     if (!restaurant) {
       return NextResponse.json(
         {
-          error:
-            "Restaurant not found",
+          error: "Restaurant not found",
         },
-        {
-          status: 404,
-        }
+        { status: 404 }
       );
     }
 
@@ -101,14 +86,8 @@ export async function GET(
       .select(
         "id, restaurant_id, table_id, status, created_at, closed_at"
       )
-      .eq(
-        "restaurant_id",
-        restaurant.id
-      )
-      .eq(
-        "status",
-        "OPEN"
-      );
+      .eq("restaurant_id", restaurant.id)
+      .eq("status", "OPEN");
 
     if (billingError) {
       console.error(
@@ -118,20 +97,15 @@ export async function GET(
 
       return NextResponse.json(
         {
-          error:
-            "Failed to load billing sessions",
+          error: "Failed to load billing sessions",
         },
-        {
-          status: 500,
-        }
+        { status: 500 }
       );
     }
 
-    const sessionIds =
-      (billingSessions || []).map(
-        (session) =>
-          session.id
-      );
+    const sessionIds = (billingSessions || []).map(
+      (session) => session.id
+    );
 
     /* =====================================================
        ACTIVE ORDERS
@@ -154,6 +128,7 @@ export async function GET(
           billing_session_id,
           total,
           status,
+          need,
           created_at,
 
           tables (
@@ -181,20 +156,11 @@ export async function GET(
             quantity
           )
         `)
-        .eq(
-          "restaurant_id",
-          restaurant.id
-        )
-        .in(
-          "billing_session_id",
-          sessionIds
-        )
-        .order(
-          "created_at",
-          {
-            ascending: true,
-          }
-        );
+        .eq("restaurant_id", restaurant.id)
+        .in("billing_session_id", sessionIds)
+        .order("created_at", {
+          ascending: true,
+        });
 
       if (ordersError) {
         console.error(
@@ -204,12 +170,9 @@ export async function GET(
 
         return NextResponse.json(
           {
-            error:
-              "Failed to load orders",
+            error: "Failed to load orders",
           },
-          {
-            status: 500,
-          }
+          { status: 500 }
         );
       }
 
@@ -217,156 +180,332 @@ export async function GET(
     }
 
     /* =====================================================
-       NORMALIZE ORDERS
+       NORMALIZE ACTIVE ORDERS
        ===================================================== */
 
-    const normalizedOrders =
-      orders.map(
-        (order) => ({
-          id: order.id,
+    const normalizedOrders = orders.map(
+      (order) => ({
+        id: order.id,
 
-          table_id:
-            order.table_id,
+        table_id: order.table_id,
 
-          customer_slot_id:
-            order.customer_slot_id ||
-            null,
+        customer_slot_id:
+          order.customer_slot_id || null,
 
-          device_id:
-            order.device_id ||
-            null,
+        device_id:
+          order.device_id || null,
 
-          billing_session_id:
-            order.billing_session_id,
+        billing_session_id:
+          order.billing_session_id,
 
-          total:
-            Number(
-              order.total || 0
-            ),
+        total: Number(order.total || 0),
 
-          status:
-            order.status,
+        status: order.status,
 
-          created_at:
-            order.created_at,
+        need: order.need || null,
 
-          table:
-            Array.isArray(
-              order.tables
-            )
-              ? order.tables[0] ||
-                null
-              : order.tables ||
-                null,
+        created_at: order.created_at,
 
-          customer:
-            Array.isArray(
-              order.customer_slots
-            )
-              ? order.customer_slots[0] ||
-                null
-              : order.customer_slots ||
-                null,
+        table: Array.isArray(order.tables)
+          ? order.tables[0] || null
+          : order.tables || null,
 
-          device:
-            Array.isArray(
-              order.devices
-            )
-              ? order.devices[0] ||
-                null
-              : order.devices ||
-                null,
+        customer: Array.isArray(
+          order.customer_slots
+        )
+          ? order.customer_slots[0] || null
+          : order.customer_slots || null,
 
-          order_items:
-            (order.order_items ||
-              []).map(
-              (item: any) => ({
-                id:
-                  item.id,
+        device: Array.isArray(order.devices)
+          ? order.devices[0] || null
+          : order.devices || null,
 
-                name:
-                  item.name,
-
-                price:
-                  Number(
-                    item.price ||
-                      0
-                  ),
-
-                quantity:
-                  Number(
-                    item.quantity ||
-                      0
-                  ),
-              })
-            ),
-        })
-      );
+        order_items: (
+          order.order_items || []
+        ).map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          price: Number(item.price || 0),
+          quantity: Number(item.quantity || 0),
+        })),
+      })
+    );
 
     /* =====================================================
-       HISTORICAL CUSTOMER ORDER COUNT
-       =====================================================
-
-       IMPORTANT:
-
-       We DO NOT use DISTINCT.
-
-       Every order placed by a customer
-       increases the count.
-
-       Example:
-
-       Session 1:
-       A → 1
-       B → 2
-       C → 3
-       D → 4
-
-       Done
-
-       Session 2:
-       A → 5
-       A → 6
-
-       Therefore this is simply the
-       total number of customer orders.
-
-       DONE never decreases this value.
-    */
+       HISTORICAL ORDERS
+       ===================================================== */
 
     const {
-      count: customerOrderCount,
-      error: customerCountError,
+      data: historicalOrders,
+      error: historicalOrdersError,
     } = await supabase
       .from("orders")
       .select(
-        "id",
-        {
-          count: "exact",
-          head: true,
-        }
+        "table_id,billing_session_id,customer_slot_id,created_at"
       )
-      .eq(
-        "restaurant_id",
-        restaurant.id
-      );
+      .eq("restaurant_id", restaurant.id)
+      .not("billing_session_id", "is", null)
+      .not("customer_slot_id", "is", null);
 
-    if (customerCountError) {
+    if (historicalOrdersError) {
       console.error(
-        "Customer order count error:",
-        customerCountError
+        "Historical customer count error:",
+        historicalOrdersError
       );
 
       return NextResponse.json(
         {
           error:
-            "Failed to calculate customer order count",
+            "Failed to calculate table customer count",
         },
-        {
-          status: 500,
-        }
+        { status: 500 }
       );
     }
+
+    /* =====================================================
+       TOTAL ORDERS BY TABLE
+       =====================================================
+
+       Customer is counted once per billing session.
+
+       Example:
+
+       Session 1:
+       A, A, B = 2
+
+       Session 2:
+       A, B, C = 3
+
+       Total = 5
+    */
+
+    const tableOrderCounts: Record<
+      string,
+      number
+    > = {};
+
+    const countedCustomers =
+      new Set<string>();
+
+    for (
+      const order of historicalOrders || []
+    ) {
+      if (
+        !order.table_id ||
+        !order.billing_session_id ||
+        !order.customer_slot_id
+      ) {
+        continue;
+      }
+
+      const uniqueKey =
+        `${order.table_id}:${order.billing_session_id}:${order.customer_slot_id}`;
+
+      if (
+        countedCustomers.has(uniqueKey)
+      ) {
+        continue;
+      }
+
+      countedCustomers.add(uniqueKey);
+
+      if (
+        typeof tableOrderCounts[
+          order.table_id
+        ] !== "number"
+      ) {
+        tableOrderCounts[
+          order.table_id
+        ] = 0;
+      }
+
+      tableOrderCounts[
+        order.table_id
+      ] += 1;
+    }
+
+    const customerOrderCount =
+      Object.values(
+        tableOrderCounts
+      ).reduce(
+        (total, count) =>
+          total + count,
+        0
+      );
+
+    /* =====================================================
+       DAILY ORDERS BY TABLE
+       ===================================================== */
+
+    const now = new Date();
+
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+
+    const tomorrowStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1
+    );
+
+    const dailyTableOrderCounts: Record<
+      string,
+      number
+    > = {};
+
+    const dailyCountedCustomers =
+      new Set<string>();
+
+    for (
+      const order of historicalOrders || []
+    ) {
+      if (
+        !order.table_id ||
+        !order.billing_session_id ||
+        !order.customer_slot_id ||
+        !order.created_at
+      ) {
+        continue;
+      }
+
+      const createdAt = new Date(
+        order.created_at
+      );
+
+      if (
+        createdAt < todayStart ||
+        createdAt >= tomorrowStart
+      ) {
+        continue;
+      }
+
+      const uniqueKey =
+        `${order.table_id}:${order.billing_session_id}:${order.customer_slot_id}`;
+
+      if (
+        dailyCountedCustomers.has(
+          uniqueKey
+        )
+      ) {
+        continue;
+      }
+
+      dailyCountedCustomers.add(
+        uniqueKey
+      );
+
+      if (
+        typeof dailyTableOrderCounts[
+          order.table_id
+        ] !== "number"
+      ) {
+        dailyTableOrderCounts[
+          order.table_id
+        ] = 0;
+      }
+
+      dailyTableOrderCounts[
+        order.table_id
+      ] += 1;
+    }
+
+    const dailyCustomerOrderCount =
+      Object.values(
+        dailyTableOrderCounts
+      ).reduce(
+        (total, count) =>
+          total + count,
+        0
+      );
+
+    /* =====================================================
+       MONTHLY ORDERS BY TABLE
+       ===================================================== */
+
+    const monthStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1
+    );
+
+    const nextMonthStart = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      1
+    );
+
+    const monthlyTableOrderCounts: Record<
+      string,
+      number
+    > = {};
+
+    const monthlyCountedCustomers =
+      new Set<string>();
+
+    for (
+      const order of historicalOrders || []
+    ) {
+      if (
+        !order.table_id ||
+        !order.billing_session_id ||
+        !order.customer_slot_id ||
+        !order.created_at
+      ) {
+        continue;
+      }
+
+      const createdAt = new Date(
+        order.created_at
+      );
+
+      if (
+        createdAt < monthStart ||
+        createdAt >= nextMonthStart
+      ) {
+        continue;
+      }
+
+      const uniqueKey =
+        `${order.table_id}:${order.billing_session_id}:${order.customer_slot_id}`;
+
+      if (
+        monthlyCountedCustomers.has(
+          uniqueKey
+        )
+      ) {
+        continue;
+      }
+
+      monthlyCountedCustomers.add(
+        uniqueKey
+      );
+
+      if (
+        typeof monthlyTableOrderCounts[
+          order.table_id
+        ] !== "number"
+      ) {
+        monthlyTableOrderCounts[
+          order.table_id
+        ] = 0;
+      }
+
+      monthlyTableOrderCounts[
+        order.table_id
+      ] += 1;
+    }
+
+    const monthlyCustomerOrderCount =
+      Object.values(
+        monthlyTableOrderCounts
+      ).reduce(
+        (total, count) =>
+          total + count,
+        0
+      );
 
     /* =====================================================
        RESPONSE
@@ -376,23 +515,23 @@ export async function GET(
       {
         restaurant,
 
-        orders:
-          normalizedOrders,
+        orders: normalizedOrders,
 
-        /*
-         * This number comes from ALL
-         * restaurant orders.
-         *
-         * It does not depend on OPEN
-         * billing sessions.
-         *
-         * Therefore Done does not
-         * decrease it.
-         */
-        customerOrderCount:
-          Number(
-            customerOrderCount || 0
-          ),
+        /* Existing total */
+        customerOrderCount,
+
+        /* Existing per-table total */
+        tableOrderCounts,
+
+        /* NEW daily */
+        dailyCustomerOrderCount,
+
+        dailyTableOrderCounts,
+
+        /* NEW monthly */
+        monthlyCustomerOrderCount,
+
+        monthlyTableOrderCounts,
       },
       {
         status: 200,
@@ -429,15 +568,13 @@ export async function PATCH(
     const body =
       await request.json();
 
-    const slug =
-      String(
-        body?.slug || ""
-      ).trim();
+    const slug = String(
+      body?.slug || ""
+    ).trim();
 
     const billingSessionId =
       String(
-        body?.billingSessionId ||
-          ""
+        body?.billingSessionId || ""
       ).trim();
 
     if (!slug) {
@@ -446,9 +583,7 @@ export async function PATCH(
           error:
             "Restaurant slug is required",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
@@ -458,9 +593,7 @@ export async function PATCH(
           error:
             "Billing session ID is required",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
@@ -490,9 +623,7 @@ export async function PATCH(
           error:
             "Failed to find restaurant",
         },
-        {
-          status: 500,
-        }
+        { status: 500 }
       );
     }
 
@@ -502,9 +633,7 @@ export async function PATCH(
           error:
             "Restaurant not found",
         },
-        {
-          status: 404,
-        }
+        { status: 404 }
       );
     }
 
@@ -514,16 +643,14 @@ export async function PATCH(
 
     const {
       data: billingSession,
-      error: billingSessionError,
+      error:
+        billingSessionError,
     } = await supabase
       .from("billing_sessions")
       .select(
         "id, restaurant_id, table_id, status"
       )
-      .eq(
-        "id",
-        billingSessionId
-      )
+      .eq("id", billingSessionId)
       .eq(
         "restaurant_id",
         restaurant.id
@@ -541,9 +668,7 @@ export async function PATCH(
           error:
             "Failed to verify billing session",
         },
-        {
-          status: 500,
-        }
+        { status: 500 }
       );
     }
 
@@ -553,9 +678,20 @@ export async function PATCH(
           error:
             "Billing session not found",
         },
+        { status: 404 }
+      );
+    }
+
+    if (
+      billingSession.status !==
+      "OPEN"
+    ) {
+      return NextResponse.json(
         {
-          status: 404,
-        }
+          error:
+            "Billing session is already closed",
+        },
+        { status: 400 }
       );
     }
 
@@ -592,9 +728,7 @@ export async function PATCH(
           error:
             "Failed to close billing session",
         },
-        {
-          status: 500,
-        }
+        { status: 500 }
       );
     }
 
@@ -629,22 +763,17 @@ export async function PATCH(
           error:
             "Billing closed, but failed to update order status",
         },
-        {
-          status: 500,
-        }
+        { status: 500 }
       );
     }
 
     return NextResponse.json(
       {
         success: true,
-
         message:
           "Billing session completed",
       },
-      {
-        status: 200,
-      }
+      { status: 200 }
     );
   } catch (error: any) {
     console.error(
@@ -658,9 +787,7 @@ export async function PATCH(
           error?.message ||
           "Internal server error",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }
