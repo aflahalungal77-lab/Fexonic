@@ -147,7 +147,7 @@ export default function Customer({
 
   /*
    * =========================================================
-   * ORDER NEED / NOTE
+   * ORDER CHECKOUT / SPECIAL REQUEST
    * =========================================================
    */
 
@@ -156,6 +156,12 @@ export default function Customer({
 
   const [orderNeed, setOrderNeed] =
     useState("");
+
+  /*
+   * =========================================================
+   * TABLE SUPPORT
+   * =========================================================
+   */
 
   const [supportOpen, setSupportOpen] =
     useState(false);
@@ -171,6 +177,12 @@ export default function Customer({
 
   const [requestSent, setRequestSent] =
     useState(false);
+
+  /*
+   * =========================================================
+   * SEARCH / FILTER
+   * =========================================================
+   */
 
   const [search, setSearch] =
     useState("");
@@ -265,6 +277,7 @@ export default function Customer({
       } catch (error) {
         if (!cancelled) {
           console.error(error);
+
           setMsg(
             "Failed to load menu"
           );
@@ -480,6 +493,7 @@ export default function Customer({
         );
 
         oscillator.connect(gain);
+
         gain.connect(
           audioContext.destination
         );
@@ -532,7 +546,7 @@ export default function Customer({
   }
 
   /* =========================================================
-     OPEN ORDER NEED
+     OPEN ORDER CHECKOUT POPUP
   ========================================================== */
 
   function openOrderNeed() {
@@ -560,7 +574,7 @@ export default function Customer({
       return;
     }
 
-    setOrderNeed("");
+    setMsg("");
     setNeedOpen(true);
   }
 
@@ -611,10 +625,12 @@ export default function Customer({
         "/api/orders",
         {
           method: "POST",
+
           headers: {
             "Content-Type":
               "application/json",
           },
+
           body: JSON.stringify({
             restaurant_id:
               restaurant.id,
@@ -627,6 +643,10 @@ export default function Customer({
 
             items: rows,
 
+            /*
+             * Special request is optional.
+             * Empty value becomes null.
+             */
             need:
               orderNeed.trim() ||
               null,
@@ -637,6 +657,7 @@ export default function Customer({
             device_name:
               "Customer Device",
           }),
+
           cache: "no-store",
         }
       );
@@ -664,11 +685,14 @@ export default function Customer({
       }
 
       setNeedOpen(false);
+
       setOrderNeed("");
+
       setCart({});
 
       setOrderSuccess({
         id: String(data.id),
+
         total: Number(
           data.total ?? cartTotal
         ),
@@ -742,10 +766,12 @@ export default function Customer({
           "/api/requests",
           {
             method: "POST",
+
             headers: {
               "Content-Type":
                 "application/json",
             },
+
             body: JSON.stringify({
               restaurant_id:
                 restaurant.id,
@@ -819,6 +845,7 @@ export default function Customer({
     return (
       <main className="fxc-customer">
         <div className="fxc-loading">
+
           <div className="fxc-loading-mark">
             F
           </div>
@@ -828,6 +855,7 @@ export default function Customer({
           <div className="fxc-skeleton-subtitle" />
 
           <div className="fxc-skeleton-card">
+
             <div className="fxc-skeleton-image" />
 
             <div className="fxc-skeleton-copy">
@@ -835,11 +863,13 @@ export default function Customer({
               <span />
               <span />
             </div>
+
           </div>
 
           <p>
             Preparing your menu…
           </p>
+
         </div>
       </main>
     );
@@ -849,6 +879,7 @@ export default function Customer({
     return (
       <main className="fxc-customer">
         <div className="fxc-unavailable">
+
           <div className="fxc-error-icon">
             !
           </div>
@@ -862,6 +893,7 @@ export default function Customer({
           </h1>
 
           <p>{msg}</p>
+
         </div>
       </main>
     );
@@ -870,17 +902,22 @@ export default function Customer({
   return (
     <main className="fxc-customer">
 
-      {/* STICKY HEADER */}
+      {/* =====================================================
+          STICKY HEADER
+      ====================================================== */}
 
       <header className="fxc-header">
+
         <div className="fxc-header-inner">
 
           <div className="fxc-brand">
+
             <span className="fxc-brand-mark">
               F
             </span>
 
             <div>
+
               <strong>
                 {restaurant?.name ||
                   "FEXONIC"}
@@ -889,12 +926,15 @@ export default function Customer({
               <span>
                 Digital ordering
               </span>
+
             </div>
+
           </div>
 
           <div className="fxc-header-actions">
 
             <div className="fxc-table-pill">
+
               <span className="fxc-live-dot" />
 
               <span>
@@ -907,6 +947,7 @@ export default function Customer({
                   6
                 ) || "—"}
               </strong>
+
             </div>
 
             {customerSlot && (
@@ -914,6 +955,7 @@ export default function Customer({
                 className="fxc-table-pill"
                 title={`Ordering as ${customerLabel}`}
               >
+
                 <span className="fxc-live-dot" />
 
                 <span>
@@ -923,20 +965,24 @@ export default function Customer({
                 <strong>
                   {customerSlot}
                 </strong>
+
               </div>
             )}
 
+            {/* EXISTING NEED SOMETHING */}
             <button
               type="button"
               className="fxc-help-button"
               onClick={openSupport}
               aria-label="Need something? Ask the waiter"
             >
+
               <span className="fxc-help-icon">
                 ✦
               </span>
 
               <span className="fxc-help-copy">
+
                 <strong>
                   Need something?
                 </strong>
@@ -944,23 +990,31 @@ export default function Customer({
                 <small>
                   Ask waiter
                 </small>
+
               </span>
 
               <span className="fxc-help-arrow">
                 →
               </span>
+
             </button>
 
           </div>
+
         </div>
+
       </header>
 
-      {/* HERO */}
+      {/* =====================================================
+          HERO
+      ====================================================== */}
 
       <section className="fxc-hero">
+
         <div className="fxc-hero-inner">
 
           <div className="fxc-hero-badge">
+
             <span className="fxc-hero-dot" />
 
             ORDER FROM YOUR TABLE
@@ -971,6 +1025,7 @@ export default function Customer({
                 {customerLabel.toUpperCase()}
               </>
             )}
+
           </div>
 
           <h1>
@@ -1002,15 +1057,19 @@ export default function Customer({
           </div>
 
         </div>
+
       </section>
 
-      {/* MENU */}
+      {/* =====================================================
+          MENU
+      ====================================================== */}
 
       <section className="fxc-content">
 
         <div className="fxc-menu-intro">
 
           <div>
+
             <span className="fxc-kicker">
               MENU
             </span>
@@ -1023,9 +1082,11 @@ export default function Customer({
               Find something you like
               and add it instantly.
             </p>
+
           </div>
 
           <div className="fxc-item-total">
+
             <strong>
               {items.length}
             </strong>
@@ -1035,11 +1096,14 @@ export default function Customer({
                 ? "item"
                 : "items"}
             </span>
+
           </div>
 
         </div>
 
-        {/* SEARCH + FILTER */}
+        {/* ===================================================
+            SEARCH + FILTER
+        ==================================================== */}
 
         <div className="fxc-discovery">
 
@@ -1089,6 +1153,7 @@ export default function Customer({
               )
             }
           >
+
             <span>☷</span>
 
             <strong>
@@ -1098,6 +1163,7 @@ export default function Customer({
             {priceFilter !== "ALL" && (
               <b>1</b>
             )}
+
           </button>
 
         </div>
@@ -1106,7 +1172,9 @@ export default function Customer({
           <div className="fxc-filter-panel">
 
             <div className="fxc-filter-heading">
+
               <div>
+
                 <span>
                   FILTER MENU
                 </span>
@@ -1114,6 +1182,7 @@ export default function Customer({
                 <strong>
                   Find your range
                 </strong>
+
               </div>
 
               <button
@@ -1124,6 +1193,7 @@ export default function Customer({
               >
                 ×
               </button>
+
             </div>
 
             <div className="fxc-filter-options">
@@ -1150,6 +1220,7 @@ export default function Customer({
                   label: "With photos",
                 },
               ].map((option) => {
+
                 const active =
                   priceFilter ===
                   option.id;
@@ -1164,6 +1235,7 @@ export default function Customer({
                         : ""
                     }
                     onClick={() => {
+
                       setPriceFilter(
                         option.id as PriceFilter
                       );
@@ -1171,8 +1243,10 @@ export default function Customer({
                       setFilterOpen(
                         false
                       );
+
                     }}
                   >
+
                     <span>
                       {option.label}
                     </span>
@@ -1180,6 +1254,7 @@ export default function Customer({
                     {active && (
                       <b>✓</b>
                     )}
+
                   </button>
                 );
               })}
@@ -1214,8 +1289,13 @@ export default function Customer({
           </div>
         )}
 
+        {/* ===================================================
+            MENU STATES
+        ==================================================== */}
+
         {items.length === 0 ? (
           <div className="fxc-empty">
+
             <div className="fxc-empty-icon">
               —
             </div>
@@ -1232,6 +1312,7 @@ export default function Customer({
               No items are available
               right now.
             </p>
+
           </div>
         ) : visibleItems.length === 0 ? (
           <div className="fxc-empty">
@@ -1271,6 +1352,7 @@ export default function Customer({
 
             {visibleItems.map(
               (item, index) => {
+
                 const quantity =
                   cart[item.id] || 0;
 
@@ -1310,16 +1392,23 @@ export default function Customer({
                         />
                       ) : (
                         <div className="fxc-food-placeholder">
+
                           <span>
                             F
                           </span>
+
                         </div>
                       )}
 
                       {quantity > 0 && (
                         <div className="fxc-selected">
-                          <span>✓</span>
+
+                          <span>
+                            ✓
+                          </span>
+
                           {quantity}
+
                         </div>
                       )}
 
@@ -1330,6 +1419,7 @@ export default function Customer({
                       <div className="fxc-food-heading">
 
                         <div>
+
                           <h3>
                             {item.name}
                           </h3>
@@ -1341,6 +1431,7 @@ export default function Customer({
                               }
                             </p>
                           )}
+
                         </div>
 
                         <strong>
@@ -1352,8 +1443,7 @@ export default function Customer({
 
                       </div>
 
-                      {quantity ===
-                      0 ? (
+                      {quantity === 0 ? (
                         <button
                           type="button"
                           className="fxc-add"
@@ -1363,6 +1453,7 @@ export default function Customer({
                             )
                           }
                         >
+
                           <span>
                             Add
                           </span>
@@ -1370,6 +1461,7 @@ export default function Customer({
                           <b>
                             +
                           </b>
+
                         </button>
                       ) : (
                         <div className="fxc-quantity">
@@ -1386,6 +1478,7 @@ export default function Customer({
                           </button>
 
                           <div>
+
                             <strong>
                               {quantity}
                             </strong>
@@ -1393,6 +1486,7 @@ export default function Customer({
                             <span>
                               added
                             </span>
+
                           </div>
 
                           <button
@@ -1423,7 +1517,9 @@ export default function Customer({
 
       </section>
 
-      {/* STICKY CART */}
+      {/* =====================================================
+          STICKY CART
+      ====================================================== */}
 
       {itemCount > 0 && (
         <div className="fxc-cart-bar">
@@ -1455,42 +1551,41 @@ export default function Customer({
             <button
               type="button"
               className="fxc-order-button"
-              onClick={openOrderNeed}
+              onClick={
+                openOrderNeed
+              }
               disabled={ordering}
             >
-              {ordering ? (
-                <>
-                  <span className="fxc-order-spinner" />
 
-                  <span>
-                    Placing order...
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span>
-                    Place order
-                  </span>
+              <span>
+                Place order
+              </span>
 
-                  <b>
-                    →
-                  </b>
-                </>
-              )}
+              <b>
+                →
+              </b>
+
             </button>
 
           </div>
 
           <div className="fxc-cart-trust">
-            <span>✓</span>
-            Secure table-linked ordering · Sent directly to kitchen
+
+            <span>
+              ✓
+            </span>
+
+            Secure table-linked ordering ·
+            Sent directly to kitchen
+
           </div>
 
         </div>
       )}
 
       {/* =====================================================
-          ORDER NEED MODAL
+          ORDER CHECKOUT POPUP
+          PLACE ORDER CARD + SPECIAL REQUEST CARD
       ====================================================== */}
 
       {needOpen && (
@@ -1498,36 +1593,44 @@ export default function Customer({
           className="fxc-modal-backdrop"
           onClick={closeOrderNeed}
         >
+
           <div
-            className="fxc-order-need-modal"
+            className="fxc-order-checkout-modal"
             onClick={(event) =>
               event.stopPropagation()
             }
             role="dialog"
             aria-modal="true"
+            aria-labelledby="checkout-title"
           >
+
+            {/* MODAL HEADER */}
 
             <div className="fxc-modal-top">
 
               <div>
+
                 <span className="fxc-modal-label">
-                  ORDER NOTE
+                  REVIEW ORDER
                 </span>
 
-                <h2>
-                  Anything we should know?
+                <h2 id="checkout-title">
+                  Ready to place?
                 </h2>
 
                 <p>
-                  Add a special request for
-                  your order.
+                  Review your order before
+                  sending it to the kitchen.
                 </p>
+
               </div>
 
               <button
                 type="button"
                 className="fxc-modal-close"
-                onClick={closeOrderNeed}
+                onClick={
+                  closeOrderNeed
+                }
                 disabled={ordering}
                 aria-label="Close"
               >
@@ -1536,65 +1639,186 @@ export default function Customer({
 
             </div>
 
-            <textarea
-              className="fxc-order-need-input"
-              value={orderNeed}
-              onChange={(event) =>
-                setOrderNeed(
-                  event.target.value
-                )
-              }
-              placeholder='Example: "Less spicy", "No onion", "Extra sauce"...'
-              maxLength={500}
-              rows={5}
-              autoFocus
-            />
+            {/* =================================================
+                PLACE ORDER CARD
+            ================================================== */}
 
-            <div className="fxc-order-need-meta">
+            <section className="fxc-checkout-card fxc-place-order-card">
+
+              <div className="fxc-checkout-card-heading">
+
+                <div>
+
+                  <span className="fxc-checkout-kicker">
+                    YOUR ORDER
+                  </span>
+
+                  <h3>
+                    Place your order
+                  </h3>
+
+                  <p>
+                    Your selected items will
+                    be sent directly to the kitchen.
+                  </p>
+
+                </div>
+
+                <div className="fxc-checkout-card-icon">
+                  ✓
+                </div>
+
+              </div>
+
+              <div className="fxc-checkout-summary">
+
+                <div>
+
+                  <span>
+                    Items
+                  </span>
+
+                  <strong>
+                    {itemCount}
+                  </strong>
+
+                </div>
+
+                <div>
+
+                  <span>
+                    Total
+                  </span>
+
+                  <strong>
+                    ₹
+                    {cartTotal.toFixed(0)}
+                  </strong>
+
+                </div>
+
+              </div>
+
+              <button
+                type="button"
+                className="fxc-checkout-place-button"
+                onClick={order}
+                disabled={ordering}
+              >
+
+                {ordering ? (
+                  <>
+                    <span className="fxc-order-spinner" />
+
+                    <span>
+                      Placing order...
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span>
+                      Place order
+                    </span>
+
+                    <b>
+                      →
+                    </b>
+                  </>
+                )}
+
+              </button>
+
+            </section>
+
+            {/* =================================================
+                SPECIAL REQUEST CARD
+            ================================================== */}
+
+            <section className="fxc-checkout-card fxc-special-request-card">
+
+              <div className="fxc-special-request-heading">
+
+                <div>
+
+                  <span className="fxc-checkout-kicker">
+                    OPTIONAL
+                  </span>
+
+                  <h3>
+                    Special request
+                  </h3>
+
+                  <p>
+                    Anything we should know
+                    about your order?
+                  </p>
+
+                </div>
+
+                <div className="fxc-special-request-icon">
+                  ✦
+                </div>
+
+              </div>
+
+              <textarea
+                className="fxc-order-need-input"
+                value={orderNeed}
+                onChange={(event) =>
+                  setOrderNeed(
+                    event.target.value
+                  )
+                }
+                placeholder='Example: "Less spicy", "No onion", "Extra sauce"...'
+                maxLength={500}
+                rows={4}
+                disabled={ordering}
+              />
+
+              <div className="fxc-order-need-meta">
+
+                <span>
+                  Your request will be
+                  sent with this order.
+                </span>
+
+                <span>
+                  {orderNeed.length}/500
+                </span>
+
+              </div>
+
+            </section>
+
+            <div className="fxc-checkout-bottom-note">
+
               <span>
-                Optional
+                ✓
               </span>
-
-              <span>
-                {orderNeed.length}/500
-              </span>
-            </div>
-
-            <button
-              type="button"
-              className="fxc-send-request"
-              onClick={order}
-              disabled={ordering}
-            >
-              {ordering
-                ? "Placing order…"
-                : "Submit & place order"}
-
-              <span>
-                →
-              </span>
-            </button>
-
-            <div className="fxc-support-note">
-              <span>✓</span>
 
               <p>
-                Your note will be sent with
-                this order to the kitchen.
+                Table-linked order ·
+                Directly sent to kitchen
               </p>
+
             </div>
 
           </div>
+
         </div>
       )}
 
-      {/* SUPPORT MODAL */}
+      {/* =====================================================
+          SUPPORT MODAL
+          EXISTING NEED SOMETHING FEATURE — UNCHANGED
+      ====================================================== */}
 
       {supportOpen && (
         <div
           className="fxc-modal-backdrop"
           onClick={closeSupport}
         >
+
           <div
             className="fxc-support-modal"
             onClick={(event) =>
@@ -1631,6 +1855,7 @@ export default function Customer({
                 <div className="fxc-modal-top">
 
                   <div>
+
                     <span className="fxc-modal-label">
                       TABLE SUPPORT
                     </span>
@@ -1643,6 +1868,7 @@ export default function Customer({
                       Choose what you need.
                       We'll notify the waiter.
                     </p>
+
                   </div>
 
                   <button
@@ -1662,6 +1888,7 @@ export default function Customer({
 
                   {requestOptions.map(
                     (option) => {
+
                       const active =
                         selectedRequest ===
                         option.type;
@@ -1707,9 +1934,11 @@ export default function Customer({
                           </span>
 
                           <span className="fxc-request-check">
+
                             {active
                               ? "✓"
                               : "›"}
+
                           </span>
 
                         </button>
@@ -1752,6 +1981,7 @@ export default function Customer({
                     sendSupportRequest
                   }
                 >
+
                   {sendingRequest
                     ? "Sending request…"
                     : "Notify waiter"}
@@ -1759,11 +1989,14 @@ export default function Customer({
                   <span>
                     →
                   </span>
+
                 </button>
 
                 <div className="fxc-support-note">
 
-                  <span>✓</span>
+                  <span>
+                    ✓
+                  </span>
 
                   <p>
                     Your request is linked
@@ -1778,11 +2011,13 @@ export default function Customer({
                     {customerSlot && (
                       <>
                         {" · "}
+
                         <strong>
                           {customerLabel}
                         </strong>
                       </>
                     )}
+
                   </p>
 
                 </div>
@@ -1791,10 +2026,13 @@ export default function Customer({
             )}
 
           </div>
+
         </div>
       )}
 
-      {/* ORDER SUCCESS */}
+      {/* =====================================================
+          ORDER SUCCESS
+      ====================================================== */}
 
       {orderSuccess && (
         <div className="fxc-modal-backdrop">
@@ -1806,9 +2044,11 @@ export default function Customer({
           >
 
             <div className="fxc-success-ring">
+
               <div>
                 ✓
               </div>
+
             </div>
 
             <span className="fxc-kicker">
@@ -1828,6 +2068,7 @@ export default function Customer({
             <div className="fxc-success-details">
 
               <div>
+
                 <span>
                   Order
                 </span>
@@ -1839,9 +2080,11 @@ export default function Customer({
                     8
                   )}
                 </strong>
+
               </div>
 
               <div>
+
                 <span>
                   Total
                 </span>
@@ -1852,6 +2095,7 @@ export default function Customer({
                     0
                   )}
                 </strong>
+
               </div>
 
             </div>
@@ -1873,14 +2117,20 @@ export default function Customer({
         </div>
       )}
 
-      {/* ERROR TOAST */}
+      {/* =====================================================
+          ERROR TOAST
+      ====================================================== */}
 
       {msg && restaurant && (
         <div className="fxc-error-toast">
 
-          <span>!</span>
+          <span>
+            !
+          </span>
 
-          <p>{msg}</p>
+          <p>
+            {msg}
+          </p>
 
           <button
             type="button"

@@ -248,9 +248,27 @@ function Icon({
 
     menuDots: (
       <>
-        <circle cx="5" cy="12" r="1" fill="currentColor" stroke="none" />
-        <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
-        <circle cx="19" cy="12" r="1" fill="currentColor" stroke="none" />
+        <circle
+          cx="5"
+          cy="12"
+          r="1"
+          fill="currentColor"
+          stroke="none"
+        />
+        <circle
+          cx="12"
+          cy="12"
+          r="1"
+          fill="currentColor"
+          stroke="none"
+        />
+        <circle
+          cx="19"
+          cy="12"
+          r="1"
+          fill="currentColor"
+          stroke="none"
+        />
       </>
     ),
 
@@ -316,10 +334,13 @@ export default function KitchenDashboard({
   const router = useRouter();
 
   const [slug, setSlug] = useState("");
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [restaurant, setRestaurant] =
+    useState<Restaurant | null>(null);
 
   const [orders, setOrders] = useState<Order[]>([]);
-  const [requests, setRequests] = useState<CustomerRequest[]>([]);
+  const [requests, setRequests] = useState<CustomerRequest[]>(
+    []
+  );
 
   const [todayOrders, setTodayOrders] = useState<Order[]>([]);
 
@@ -356,21 +377,24 @@ export default function KitchenDashboard({
 
       setRestaurant(restaurantData);
 
-      const { data: orderData, error: orderError } = await supabase
-        .from("orders")
-        .select(
-          "id,status,total,created_at,table_id,device_id,tables(name)"
-        )
-        .eq("restaurant_id", restaurantData.id)
-        .order("created_at", { ascending: false })
-        .limit(200);
+      const { data: orderData, error: orderError } =
+        await supabase
+          .from("orders")
+          .select(
+            "id,status,total,created_at,table_id,device_id,tables(name)"
+          )
+          .eq("restaurant_id", restaurantData.id)
+          .order("created_at", { ascending: false })
+          .limit(200);
 
       if (orderError) throw orderError;
 
       const { data: requestData, error: requestError } =
         await supabase
           .from("customer_requests")
-          .select("id,type,status,created_at,table_id,tables(name)")
+          .select(
+            "id,type,status,created_at,table_id,tables(name)"
+          )
           .eq("restaurant_id", restaurantData.id)
           .eq("status", "PENDING")
           .order("created_at", { ascending: false })
@@ -384,7 +408,9 @@ export default function KitchenDashboard({
       setRequests((requestData || []) as CustomerRequest[]);
 
       setTodayOrders(
-        allOrders.filter((order) => sameDay(order.created_at))
+        allOrders.filter((order) =>
+          sameDay(order.created_at)
+        )
       );
     } catch (error) {
       console.error("Dashboard loading error:", error);
@@ -534,8 +560,8 @@ export default function KitchenDashboard({
     go(`/k/${slug}/requests`);
   };
 
-  const openTables = () => {
-    go(`/k/${slug}/manage`);
+  const openOrderDetails = () => {
+    go(`/k/${slug}/order-details`);
   };
 
   if (loading && !restaurant) {
@@ -589,58 +615,62 @@ export default function KitchenDashboard({
         </div>
 
         <div className="fx-drawer-scroll">
-<NavigationSection
-  title="WORKSPACE"
-  items={[
-    {
-      label: "Dashboard",
-      icon: "home",
-      active: true,
-      onClick: () => go(`/k/${slug}`),
-    },
-    {
-      label: "Orders",
-      icon: "orders",
-      badge: stats.newOrders,
-      onClick: openOrders,
-    },
-    {
-      label: "Requests",
-      icon: "bell",
-      badge: stats.requests,
-      onClick: openRequests,
-    },
-  ]}
-/>
+          <NavigationSection
+            title="WORKSPACE"
+            items={[
+              {
+                label: "Dashboard",
+                icon: "home",
+                active: true,
+                onClick: () => go(`/k/${slug}`),
+              },
+              {
+                label: "Orders",
+                icon: "orders",
+                badge: stats.newOrders,
+                onClick: openOrders,
+              },
+              {
+                label: "Requests",
+                icon: "bell",
+                badge: stats.requests,
+                onClick: openRequests,
+              },
+            ]}
+          />
 
-<NavigationSection
-  title="MANAGEMENT"
-  items={[
-    {
-      label: "Manage",
-      icon: "qr",
-      onClick: openTables,
-    },
-  ]}
-/>
+          <NavigationSection
+            title="MANAGEMENT"
+            items={[
+              {
+                label: "Manage",
+                icon: "qr",
+                onClick: () =>
+                  go(`/k/${slug}/manage`),
+              },
+              {
+                label: "Order Details",
+                icon: "document",
+                onClick: openOrderDetails,
+              },
+            ]}
+          />
 
-<NavigationSection
-  title="BUSINESS"
-  items={[
-    {
-      label: "Order History",
-      icon: "history",
-      onClick: openOrders,
-    },
-  ]}
-/>
+          <NavigationSection
+            title="BUSINESS"
+            items={[
+              {
+                label: "Order History",
+                icon: "history",
+                onClick: openOrders,
+              },
+            ]}
+          />
         </div>
 
         <div className="fx-drawer-profile">
           <div className="fx-profile-avatar">
-            {restaurant.name
-              .slice(0, 1)
-              .toUpperCase()}
+            {restaurant.name.slice(0, 1).toUpperCase()}
           </div>
 
           <div className="fx-profile-info">
@@ -672,57 +702,53 @@ export default function KitchenDashboard({
 
         <div className="fx-desktop-scroll">
           <NavigationSection
-  title="WORKSPACE"
-  items={[
-    {
-      label: "Dashboard",
-      icon: "home",
-      active: true,
-      onClick: () => go(`/k/${slug}`),
-    },
-    {
-      label: "Orders",
-      icon: "orders",
-      badge: stats.newOrders,
-      onClick: openOrders,
-    },
-    {
-      label: "Requests",
-      icon: "bell",
-      badge: stats.requests,
-      onClick: openRequests,
-    },
-  ]}
-/>
+            title="WORKSPACE"
+            items={[
+              {
+                label: "Dashboard",
+                icon: "home",
+                active: true,
+                onClick: () => go(`/k/${slug}`),
+              },
+              {
+                label: "Orders",
+                icon: "orders",
+                badge: stats.newOrders,
+                onClick: openOrders,
+              },
+              {
+                label: "Requests",
+                icon: "bell",
+                badge: stats.requests,
+                onClick: openRequests,
+              },
+              {
+                label: "Order Details",
+                icon: "document",
+                onClick: openOrderDetails,
+              },
+            ]}
+          />
 
-<NavigationSection
-  title="MANAGEMENT"
-  items={[
-    {
-      label: "Manage",
-      icon: "qr",
-      onClick: openTables,
-    },
-  ]}
-/>
+          <NavigationSection
+            title="MANAGEMENT"
+            items={[
+              {
+                label: "Manage",
+                icon: "qr",
+                onClick: () =>
+                  go(`/k/${slug}/manage`),
+              }
+              
+            ]}
+          />
 
-<NavigationSection
-  title="BUSINESS"
-  items={[
-    {
-      label: "Order History",
-      icon: "history",
-      onClick: openOrders,
-    },
-  ]}
-/>
+
         </div>
 
         <div className="fx-desktop-profile">
           <div className="fx-profile-avatar">
-            {restaurant.name
-              .slice(0, 1)
-              .toUpperCase()}
+            {restaurant.name.slice(0, 1).toUpperCase()}
           </div>
 
           <div className="fx-profile-info">
@@ -796,10 +822,7 @@ export default function KitchenDashboard({
               disabled={refreshing}
               aria-label="Refresh dashboard"
             >
-              <Icon
-                name="refresh"
-                size={17}
-              />
+              <Icon name="refresh" size={17} />
             </button>
 
             <button
@@ -895,9 +918,7 @@ export default function KitchenDashboard({
               type="button"
               className="fx-status-card fx-status-blue"
               onClick={() =>
-                go(
-                  `/k/${slug}/orders?status=NEW`
-                )
+                go(`/k/${slug}/orders?status=NEW`)
               }
             >
               <div className="fx-status-card-icon">
@@ -912,9 +933,7 @@ export default function KitchenDashboard({
               type="button"
               className="fx-status-card fx-status-orange"
               onClick={() =>
-                go(
-                  `/k/${slug}/orders?status=PREPARING`
-                )
+                go(`/k/${slug}/orders?status=PREPARING`)
               }
             >
               <div className="fx-status-card-icon">
@@ -929,9 +948,7 @@ export default function KitchenDashboard({
               type="button"
               className="fx-status-card fx-status-green"
               onClick={() =>
-                go(
-                  `/k/${slug}/orders?status=READY`
-                )
+                go(`/k/${slug}/orders?status=READY`)
               }
             >
               <div className="fx-status-card-icon">
@@ -967,28 +984,17 @@ export default function KitchenDashboard({
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => {}}
-                className="fx-view-reports"
-              >
-                View Reports
-                <Icon name="arrow" size={16} />
-              </button>
+              
             </div>
 
             <div className="fx-overview-metrics">
               <div>
-                <strong>
-                  {stats.totalOrders}
-                </strong>
+                <strong>{stats.totalOrders}</strong>
                 <span>Total Orders</span>
               </div>
 
               <div>
-                <strong>
-                  {stats.customers}
-                </strong>
+                <strong>{stats.customers}</strong>
                 <span>Customers</span>
               </div>
 
@@ -1055,10 +1061,10 @@ export default function KitchenDashboard({
 
           <button
             type="button"
-            onClick={openTables}
+            onClick={openOrderDetails}
           >
-            <Icon name="table" size={19} />
-            <span>Tables</span>
+            <Icon name="document" size={19} />
+            <span>Order Details</span>
           </button>
         </nav>
       </section>

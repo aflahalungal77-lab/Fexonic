@@ -55,10 +55,7 @@ type FilterStatus =
   | "PREPARING"
   | "READY";
 
-const statusLabels: Record<
-  OrderStatus,
-  string
-> = {
+const statusLabels: Record<OrderStatus, string> = {
   NEW: "New",
   PREPARING: "Preparing",
   READY: "Ready",
@@ -67,18 +64,14 @@ const statusLabels: Record<
 };
 
 function formatTime(value: string) {
-  return new Date(
-    value
-  ).toLocaleTimeString("en-IN", {
+  return new Date(value).toLocaleTimeString("en-IN", {
     hour: "2-digit",
     minute: "2-digit",
   });
 }
 
 function formatDate(value: string) {
-  return new Date(
-    value
-  ).toLocaleDateString("en-IN", {
+  return new Date(value).toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -86,21 +79,13 @@ function formatDate(value: string) {
 }
 
 function shortOrderId(id: string) {
-  return `#${id
-    .slice(0, 6)
-    .toUpperCase()}`;
+  return `#${id.slice(0, 6).toUpperCase()}`;
 }
 
 function money(
-  value:
-    | number
-    | string
-    | null
-    | undefined
+  value: number | string | null | undefined
 ) {
-  return `₹${Number(
-    value || 0
-  ).toFixed(0)}`;
+  return `₹${Number(value || 0).toFixed(0)}`;
 }
 
 export default function OrdersPage({
@@ -111,11 +96,9 @@ export default function OrdersPage({
   }>;
 }) {
   const router = useRouter();
-  const searchParams =
-    useSearchParams();
+  const searchParams = useSearchParams();
 
-  const [slug, setSlug] =
-    useState("");
+  const [slug, setSlug] = useState("");
 
   const [restaurant, setRestaurant] =
     useState<any>(null);
@@ -132,16 +115,11 @@ export default function OrdersPage({
   const [busyOrder, setBusyOrder] =
     useState<string | null>(null);
 
-  const [
-    selectedOrder,
-    setSelectedOrder,
-  ] =
+  const [selectedOrder, setSelectedOrder] =
     useState<Order | null>(null);
 
-  const [
-    requestsCount,
-    setRequestsCount,
-  ] = useState(0);
+  const [requestsCount, setRequestsCount] =
+    useState(0);
 
   const [filter, setFilter] =
     useState<FilterStatus>("ALL");
@@ -153,8 +131,7 @@ export default function OrdersPage({
   }, [params]);
 
   useEffect(() => {
-    const status =
-      searchParams.get("status");
+    const status = searchParams.get("status");
 
     if (
       status === "NEW" ||
@@ -167,138 +144,124 @@ export default function OrdersPage({
     }
   }, [searchParams]);
 
-  const loadOrders =
-    useCallback(async () => {
-      if (!slug) return;
+  const loadOrders = useCallback(async () => {
+    if (!slug) return;
 
-      setRefreshing(true);
+    setRefreshing(true);
 
-      try {
-        const supabase =
-          supabaseBrowser();
+    try {
+      const supabase = supabaseBrowser();
 
-        const {
-          data: restaurantData,
-          error:
-            restaurantError,
-        } = await supabase
-          .from("restaurants")
-          .select("*")
-          .eq("slug", slug)
-          .single();
+      const {
+        data: restaurantData,
+        error: restaurantError,
+      } = await supabase
+        .from("restaurants")
+        .select("*")
+        .eq("slug", slug)
+        .single();
 
-        if (
-          restaurantError ||
-          !restaurantData
-        ) {
-          router.replace(
-            "/kitchen"
-          );
-          return;
-        }
-
-        setRestaurant(
-          restaurantData
-        );
-
-        const [
-          {
-            data: orderData,
-            error: orderError,
-          },
-          {
-            count: requestCount,
-            error: requestError,
-          },
-        ] =
-          await Promise.all([
-            supabase
-              .from("orders")
-              .select(
-                `
-                  id,
-                  status,
-                  total,
-                  created_at,
-                  table_id,
-                  customer_slot_id,
-                  need,
-                  tables(name),
-                  customer_slots(
-                    slot_code
-                  ),
-                  order_items(
-                    id,
-                    name,
-                    quantity,
-                    price
-                  )
-                `
-              )
-              .eq(
-                "restaurant_id",
-                restaurantData.id
-              )
-              .in("status", [
-                "NEW",
-                "PREPARING",
-                "READY",
-              ])
-              .order(
-                "created_at",
-                {
-                  ascending: false,
-                }
-              )
-              .limit(100),
-
-            supabase
-              .from(
-                "customer_requests"
-              )
-              .select("id", {
-                count: "exact",
-                head: true,
-              })
-              .eq(
-                "restaurant_id",
-                restaurantData.id
-              )
-              .eq(
-                "status",
-                "PENDING"
-              ),
-          ]);
-
-        if (orderError) {
-          throw orderError;
-        }
-
-        if (requestError) {
-          console.error(
-            "Request count error:",
-            requestError
-          );
-        }
-
-        setOrders(
-          (orderData ||
-            []) as Order[]
-        );
-
-        setRequestsCount(
-          requestCount || 0
-        );
-      } catch (error) {
-        console.error(
-          "Orders loading error:",
-          error
-        );
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
+      if (
+        restaurantError ||
+        !restaurantData
+      ) {
+        router.replace("/kitchen");
+        return;
       }
-    }, [router, slug]);
+
+      setRestaurant(restaurantData);
+
+      const [
+        {
+          data: orderData,
+          error: orderError,
+        },
+        {
+          count: requestCount,
+          error: requestError,
+        },
+      ] = await Promise.all([
+        supabase
+          .from("orders")
+          .select(
+            `
+              id,
+              status,
+              total,
+              created_at,
+              table_id,
+              customer_slot_id,
+              need,
+              tables(name),
+              customer_slots(
+                slot_code
+              ),
+              order_items(
+                id,
+                name,
+                quantity,
+                price
+              )
+            `
+          )
+          .eq(
+            "restaurant_id",
+            restaurantData.id
+          )
+          .in("status", [
+            "NEW",
+            "PREPARING",
+            "READY",
+          ])
+          .order("created_at", {
+            ascending: false,
+          })
+          .limit(100),
+
+        supabase
+          .from("customer_requests")
+          .select("id", {
+            count: "exact",
+            head: true,
+          })
+          .eq(
+            "restaurant_id",
+            restaurantData.id
+          )
+          .eq(
+            "status",
+            "PENDING"
+          ),
+      ]);
+
+      if (orderError) {
+        throw orderError;
+      }
+
+      if (requestError) {
+        console.error(
+          "Request count error:",
+          requestError
+        );
+      }
+
+      setOrders(
+        (orderData || []) as Order[]
+      );
+
+      setRequestsCount(
+        requestCount || 0
+      );
+    } catch (error) {
+      console.error(
+        "Orders loading error:",
+        error
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [router, slug]);
 
   useEffect(() => {
     loadOrders();
@@ -338,10 +301,7 @@ export default function OrdersPage({
           .update({
             status,
           })
-          .eq(
-            "id",
-            orderId
-          )
+          .eq("id", orderId)
           .eq(
             "restaurant_id",
             restaurant.id
@@ -364,44 +324,38 @@ export default function OrdersPage({
     }
   }
 
-  const counts =
-    useMemo(() => {
-      return {
-        all: orders.length,
+  const counts = useMemo(() => {
+    return {
+      all: orders.length,
 
-        new: orders.filter(
-          (order) =>
-            order.status ===
-            "NEW"
-        ).length,
+      new: orders.filter(
+        (order) =>
+          order.status === "NEW"
+      ).length,
 
-        preparing:
-          orders.filter(
-            (order) =>
-              order.status ===
-              "PREPARING"
-          ).length,
-
-        ready: orders.filter(
-          (order) =>
-            order.status ===
-            "READY"
-        ).length,
-      };
-    }, [orders]);
-
-  const filteredOrders =
-    useMemo(() => {
-      if (filter === "ALL") {
-        return orders;
-      }
-
-      return orders.filter(
+      preparing: orders.filter(
         (order) =>
           order.status ===
-          filter
-      );
-    }, [orders, filter]);
+          "PREPARING"
+      ).length,
+
+      ready: orders.filter(
+        (order) =>
+          order.status === "READY"
+      ).length,
+    };
+  }, [orders]);
+
+  const filteredOrders = useMemo(() => {
+    if (filter === "ALL") {
+      return orders;
+    }
+
+    return orders.filter(
+      (order) =>
+        order.status === filter
+    );
+  }, [orders, filter]);
 
   function changeFilter(
     nextFilter: FilterStatus
@@ -420,10 +374,7 @@ export default function OrdersPage({
     );
   }
 
-  if (
-    !restaurant &&
-    loading
-  ) {
+  if (!restaurant && loading) {
     return (
       <main className="fx-app">
         <div className="ko-loading">
@@ -459,6 +410,8 @@ export default function OrdersPage({
     >
       <div className="ko-page">
 
+        {/* HEADER */}
+
         <section className="ko-page-header">
           <div>
             <p className="ko-eyebrow">
@@ -479,12 +432,8 @@ export default function OrdersPage({
           <button
             type="button"
             className="ko-refresh"
-            onClick={
-              loadOrders
-            }
-            disabled={
-              refreshing
-            }
+            onClick={loadOrders}
+            disabled={refreshing}
           >
             <span
               className={
@@ -502,7 +451,10 @@ export default function OrdersPage({
           </button>
         </section>
 
+        {/* SUMMARY */}
+
         <section className="ko-summary">
+
           <div className="ko-summary-card">
             <span className="ko-summary-label">
               Total active
@@ -558,10 +510,14 @@ export default function OrdersPage({
               Waiting to serve
             </small>
           </div>
+
         </section>
+
+        {/* FILTERS */}
 
         <section className="ko-filter-wrap">
           <div className="ko-filter-scroll">
+
             <button
               type="button"
               className={
@@ -570,9 +526,7 @@ export default function OrdersPage({
                   : "ko-filter"
               }
               onClick={() =>
-                changeFilter(
-                  "ALL"
-                )
+                changeFilter("ALL")
               }
             >
               <span>
@@ -592,9 +546,7 @@ export default function OrdersPage({
                   : "ko-filter ko-filter-new"
               }
               onClick={() =>
-                changeFilter(
-                  "NEW"
-                )
+                changeFilter("NEW")
               }
             >
               <span>
@@ -609,8 +561,7 @@ export default function OrdersPage({
             <button
               type="button"
               className={
-                filter ===
-                "PREPARING"
+                filter === "PREPARING"
                   ? "ko-filter active"
                   : "ko-filter"
               }
@@ -632,15 +583,12 @@ export default function OrdersPage({
             <button
               type="button"
               className={
-                filter ===
-                "READY"
+                filter === "READY"
                   ? "ko-filter active"
                   : "ko-filter"
               }
               onClick={() =>
-                changeFilter(
-                  "READY"
-                )
+                changeFilter("READY")
               }
             >
               <span>
@@ -651,10 +599,14 @@ export default function OrdersPage({
                 {counts.ready}
               </b>
             </button>
+
           </div>
         </section>
 
+        {/* ORDERS */}
+
         <section className="ko-orders-section">
+
           <div className="ko-section-heading">
             <div>
               <p className="ko-eyebrow">
@@ -662,8 +614,7 @@ export default function OrdersPage({
               </p>
 
               <h2>
-                {filter ===
-                "ALL"
+                {filter === "ALL"
                   ? "Current orders"
                   : `${statusLabels[filter]} orders`}
               </h2>
@@ -675,8 +626,11 @@ export default function OrdersPage({
             </span>
           </div>
 
+          {/* LOADING */}
+
           {loading ? (
             <div className="ko-order-grid">
+
               {[1, 2, 3].map(
                 (item) => (
                   <div
@@ -684,23 +638,32 @@ export default function OrdersPage({
                     key={item}
                   >
                     <div className="ko-skeleton ko-sk-small" />
+
                     <div className="ko-skeleton ko-sk-title" />
+
                     <div className="ko-skeleton ko-sk-line" />
+
                     <div className="ko-skeleton ko-sk-line" />
+
                     <div className="ko-skeleton ko-sk-button" />
                   </div>
                 )
               )}
+
             </div>
+
           ) : filteredOrders.length === 0 ? (
+
+            /* EMPTY */
+
             <div className="ko-empty">
+
               <div className="ko-empty-icon">
                 ✓
               </div>
 
               <h3>
-                {filter ===
-                "ALL"
+                {filter === "ALL"
                   ? "No active orders"
                   : `No ${statusLabels[
                       filter
@@ -713,24 +676,28 @@ export default function OrdersPage({
                 automatically.
               </p>
 
-              {filter !==
-                "ALL" && (
+              {filter !== "ALL" && (
                 <button
                   type="button"
                   onClick={() =>
-                    changeFilter(
-                      "ALL"
-                    )
+                    changeFilter("ALL")
                   }
                 >
                   View all orders
                 </button>
               )}
+
             </div>
+
           ) : (
+
+            /* ORDER GRID */
+
             <div className="ko-order-grid">
+
               {filteredOrders.map(
                 (order) => {
+
                   const itemCount =
                     order.order_items?.reduce(
                       (
@@ -739,8 +706,7 @@ export default function OrdersPage({
                       ) =>
                         total +
                         Number(
-                          item.quantity ||
-                            0
+                          item.quantity || 0
                         ),
                       0
                     ) || 0;
@@ -753,11 +719,13 @@ export default function OrdersPage({
                   return (
                     <article
                       className={`ko-order-card ko-order-${order.status.toLowerCase()}`}
-                      key={
-                        order.id
-                      }
+                      key={order.id}
                     >
+
+                      {/* CARD TOP */}
+
                       <div className="ko-card-top">
+
                         <div
                           className={`ko-status ko-status-${order.status.toLowerCase()}`}
                         >
@@ -775,14 +743,17 @@ export default function OrdersPage({
                             order.created_at
                           )}
                         </span>
+
                       </div>
 
+                      {/* ORDER HEADER */}
+
                       <div className="ko-order-heading">
+
                         <div>
+
                           <h3>
-                            {order
-                              .tables
-                              ?.name ||
+                            {order.tables?.name ||
                               "Table"}
                           </h3>
 
@@ -799,6 +770,7 @@ export default function OrdersPage({
                               order.created_at
                             )}
                           </p>
+
                         </div>
 
                         <strong>
@@ -806,7 +778,10 @@ export default function OrdersPage({
                             order.total
                           )}
                         </strong>
+
                       </div>
+
+                      {/* CUSTOMER */}
 
                       {customerCode && (
                         <div
@@ -823,6 +798,7 @@ export default function OrdersPage({
                             gap: "8px",
                           }}
                         >
+
                           <span
                             style={{
                               display:
@@ -851,6 +827,7 @@ export default function OrdersPage({
                           </span>
 
                           <div>
+
                             <small
                               style={{
                                 display:
@@ -881,9 +858,13 @@ export default function OrdersPage({
                               Customer{" "}
                               {customerCode}
                             </strong>
+
                           </div>
+
                         </div>
                       )}
+
+                      {/* CUSTOMER NEED */}
 
                       {order.need && (
                         <div
@@ -901,6 +882,7 @@ export default function OrdersPage({
                               "1px solid #e2ebe5",
                           }}
                         >
+
                           <span
                             style={{
                               display:
@@ -935,10 +917,14 @@ export default function OrdersPage({
                           >
                             {order.need}
                           </p>
+
                         </div>
                       )}
 
+                      {/* ITEMS */}
+
                       <div className="ko-items">
+
                         {(
                           order.order_items ||
                           []
@@ -946,22 +932,19 @@ export default function OrdersPage({
                           (item) => (
                             <div
                               className="ko-item"
-                              key={
-                                item.id
-                              }
+                              key={item.id}
                             >
+
                               <div>
+
                                 <b>
-                                  {
-                                    item.quantity
-                                  }
+                                  {item.quantity}
                                 </b>
 
                                 <span>
-                                  {
-                                    item.name
-                                  }
+                                  {item.name}
                                 </span>
+
                               </div>
 
                               <strong>
@@ -974,16 +957,20 @@ export default function OrdersPage({
                                     )
                                 )}
                               </strong>
+
                             </div>
                           )
                         )}
+
                       </div>
 
+                      {/* META */}
+
                       <div className="ko-card-meta">
+
                         <span>
                           {itemCount}{" "}
-                          {itemCount ===
-                          1
+                          {itemCount === 1
                             ? "item"
                             : "items"}
                         </span>
@@ -997,57 +984,44 @@ export default function OrdersPage({
                           }
                         >
                           View details
+
                           <span>
                             →
                           </span>
                         </button>
+
                       </div>
 
+                      {/* ACTIONS */}
+
                       <div className="ko-actions">
+
+                        {/* NEW */}
+
                         {order.status ===
                           "NEW" && (
-                          <>
-                            <button
-                              type="button"
-                              className="ko-button ko-button-secondary"
-                              disabled={
-                                busyOrder ===
-                                order.id
-                              }
-                              onClick={() =>
-                                updateOrderStatus(
-                                  order.id,
-                                  "CANCELLED"
-                                )
-                              }
-                            >
-                              {busyOrder ===
+                          <button
+                            type="button"
+                            className="ko-button ko-button-primary ko-button-full"
+                            disabled={
+                              busyOrder ===
                               order.id
-                                ? "..."
-                                : "Reject"}
-                            </button>
-
-                            <button
-                              type="button"
-                              className="ko-button ko-button-primary"
-                              disabled={
-                                busyOrder ===
-                                order.id
-                              }
-                              onClick={() =>
-                                updateOrderStatus(
-                                  order.id,
-                                  "PREPARING"
-                                )
-                              }
-                            >
-                              {busyOrder ===
-                              order.id
-                                ? "Updating..."
-                                : "Accept order"}
-                            </button>
-                          </>
+                            }
+                            onClick={() =>
+                              updateOrderStatus(
+                                order.id,
+                                "PREPARING"
+                              )
+                            }
+                          >
+                            {busyOrder ===
+                            order.id
+                              ? "Updating..."
+                              : "Accept order"}
+                          </button>
                         )}
+
+                        {/* PREPARING */}
 
                         {order.status ===
                           "PREPARING" && (
@@ -1072,6 +1046,8 @@ export default function OrdersPage({
                           </button>
                         )}
 
+                        {/* READY */}
+
                         {order.status ===
                           "READY" && (
                           <button
@@ -1094,17 +1070,24 @@ export default function OrdersPage({
                               : "Mark as served ✓"}
                           </button>
                         )}
+
                       </div>
+
                     </article>
                   );
                 }
               )}
+
             </div>
           )}
+
         </section>
 
         <div className="ko-mobile-bottom-space" />
+
       </div>
+
+      {/* ORDER DETAILS */}
 
       {selectedOrder && (
         <div
@@ -1113,16 +1096,22 @@ export default function OrdersPage({
             setSelectedOrder(null)
           }
         >
+
           <div
             className="ko-detail-sheet"
             onClick={(event) =>
               event.stopPropagation()
             }
           >
+
             <div className="ko-detail-handle" />
 
+            {/* DETAIL HEADER */}
+
             <div className="ko-detail-header">
+
               <div>
+
                 <span
                   className={`ko-status ko-status-${selectedOrder.status.toLowerCase()}`}
                 >
@@ -1136,9 +1125,7 @@ export default function OrdersPage({
                 </span>
 
                 <h2>
-                  {selectedOrder
-                    .tables
-                    ?.name ||
+                  {selectedOrder.tables?.name ||
                     "Table"}
                 </h2>
 
@@ -1155,23 +1142,24 @@ export default function OrdersPage({
                     selectedOrder.created_at
                   )}
                 </p>
+
               </div>
 
               <button
                 type="button"
                 className="ko-detail-close"
                 onClick={() =>
-                  setSelectedOrder(
-                    null
-                  )
+                  setSelectedOrder(null)
                 }
               >
                 ×
               </button>
+
             </div>
 
-            {selectedOrder
-              .customer_slots
+            {/* CUSTOMER */}
+
+            {selectedOrder.customer_slots
               ?.slot_code && (
               <div
                 style={{
@@ -1192,6 +1180,7 @@ export default function OrdersPage({
                   gap: "10px",
                 }}
               >
+
                 <div
                   style={{
                     width: "34px",
@@ -1220,6 +1209,7 @@ export default function OrdersPage({
                 </div>
 
                 <div>
+
                   <small
                     style={{
                       display:
@@ -1254,9 +1244,13 @@ export default function OrdersPage({
                         .slot_code
                     }
                   </strong>
+
                 </div>
+
               </div>
             )}
+
+            {/* NEED */}
 
             {selectedOrder.need && (
               <div
@@ -1273,6 +1267,7 @@ export default function OrdersPage({
                     "1px solid #eee7c9",
                 }}
               >
+
                 <span
                   style={{
                     display:
@@ -1309,10 +1304,14 @@ export default function OrdersPage({
                 >
                   {selectedOrder.need}
                 </p>
+
               </div>
             )}
 
+            {/* DETAIL ITEMS */}
+
             <div className="ko-detail-items">
+
               {(
                 selectedOrder.order_items ||
                 []
@@ -1320,23 +1319,19 @@ export default function OrdersPage({
                 (item) => (
                   <div
                     className="ko-detail-item"
-                    key={
-                      item.id
-                    }
+                    key={item.id}
                   >
+
                     <div>
+
                       <strong>
-                        {
-                          item.quantity
-                        }{" "}
-                        ×
+                        {item.quantity} ×
                       </strong>
 
                       <span>
-                        {
-                          item.name
-                        }
+                        {item.name}
                       </span>
+
                     </div>
 
                     <b>
@@ -1349,12 +1344,17 @@ export default function OrdersPage({
                           )
                       )}
                     </b>
+
                   </div>
                 )
               )}
+
             </div>
 
+            {/* TOTAL */}
+
             <div className="ko-detail-total">
+
               <span>
                 Total
               </span>
@@ -1364,46 +1364,34 @@ export default function OrdersPage({
                   selectedOrder.total
                 )}
               </strong>
+
             </div>
 
+            {/* DETAIL ACTIONS */}
+
             <div className="ko-detail-actions">
+
               {selectedOrder.status ===
                 "NEW" && (
-                <>
-                  <button
-                    type="button"
-                    className="ko-button ko-button-secondary"
-                    disabled={
-                      busyOrder ===
-                      selectedOrder.id
-                    }
-                    onClick={() =>
-                      updateOrderStatus(
-                        selectedOrder.id,
-                        "CANCELLED"
-                      )
-                    }
-                  >
-                    Reject
-                  </button>
-
-                  <button
-                    type="button"
-                    className="ko-button ko-button-primary"
-                    disabled={
-                      busyOrder ===
-                      selectedOrder.id
-                    }
-                    onClick={() =>
-                      updateOrderStatus(
-                        selectedOrder.id,
-                        "PREPARING"
-                      )
-                    }
-                  >
-                    Accept order
-                  </button>
-                </>
+                <button
+                  type="button"
+                  className="ko-button ko-button-primary ko-button-full"
+                  disabled={
+                    busyOrder ===
+                    selectedOrder.id
+                  }
+                  onClick={() =>
+                    updateOrderStatus(
+                      selectedOrder.id,
+                      "PREPARING"
+                    )
+                  }
+                >
+                  {busyOrder ===
+                  selectedOrder.id
+                    ? "Updating..."
+                    : "Accept order"}
+                </button>
               )}
 
               {selectedOrder.status ===
@@ -1422,7 +1410,10 @@ export default function OrdersPage({
                     )
                   }
                 >
-                  Mark as ready →
+                  {busyOrder ===
+                  selectedOrder.id
+                    ? "Updating..."
+                    : "Mark as ready →"}
                 </button>
               )}
 
@@ -1442,13 +1433,19 @@ export default function OrdersPage({
                     )
                   }
                 >
-                  Mark as served ✓
+                  {busyOrder ===
+                  selectedOrder.id
+                    ? "Updating..."
+                    : "Mark as served ✓"}
                 </button>
               )}
+
             </div>
+
           </div>
         </div>
       )}
+
     </KitchenShell>
   );
 }

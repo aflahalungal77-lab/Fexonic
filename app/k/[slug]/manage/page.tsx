@@ -295,11 +295,6 @@ export default function ManagePage({
           throw tableResult.error;
         }
 
-        /*
-         * Customer slots are member-only through RLS.
-         * If this query fails, the table QR still works
-         * because the slot itself is generated from A/B/C/D.
-         */
         if (slotResult.error) {
           console.warn(
             "Customer slot loading warning:",
@@ -363,7 +358,9 @@ export default function ManagePage({
     setEditingItem(item);
     setMenuName(item.name);
     setMenuPrice(String(item.price));
-    setMenuDescription(item.description || "");
+    setMenuDescription(
+      item.description || ""
+    );
     setMenuCategory(
       item.category_id || ""
     );
@@ -472,7 +469,9 @@ export default function ManagePage({
           .from("menu_items")
           .update({
             name,
-            description: menuDescription.trim() || null,
+            description:
+              menuDescription.trim() ||
+              null,
             price,
             category_id:
               menuCategory || null,
@@ -501,7 +500,9 @@ export default function ManagePage({
             restaurant_id:
               restaurant.id,
             name,
-            description: menuDescription.trim() || null,
+            description:
+              menuDescription.trim() ||
+              null,
             price,
             category_id:
               menuCategory || null,
@@ -597,41 +598,64 @@ export default function ManagePage({
   async function addCategory() {
     if (!restaurant) return;
 
-    const name = categoryName.trim();
+    const name =
+      categoryName.trim();
 
     if (!name) {
-      window.alert("Please enter a category name.");
+      window.alert(
+        "Please enter a category name."
+      );
       return;
     }
 
     setCategorySaving(true);
 
     try {
-      const supabase = supabaseBrowser();
+      const supabase =
+        supabaseBrowser();
 
-      const { data, error } = await supabase
+      const {
+        data,
+        error,
+      } = await supabase
         .from("menu_categories")
         .insert({
-          restaurant_id: restaurant.id,
+          restaurant_id:
+            restaurant.id,
           name,
         })
         .select("id,name")
         .single();
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       setCategoryModal(false);
       setCategoryName("");
 
+      /*
+       * Refresh categories first,
+       * then automatically select the
+       * newly created category for the
+       * product currently being added/edited.
+       */
       await loadData();
 
       if (data?.id) {
-        setMenuCategory(data.id);
+        setMenuCategory(
+          data.id
+        );
       }
     } catch (error: any) {
-      console.error("Category add error:", error);
+      console.error(
+        "Category add error:",
+        error
+      );
+
       window.alert(
-        error?.message || "Could not add category."
+        error?.message ||
+          "Could not add category."
       );
     } finally {
       setCategorySaving(false);
@@ -687,14 +711,6 @@ export default function ManagePage({
       if (error) {
         throw error;
       }
-
-      /*
-       * Database trigger automatically creates:
-       * Customer A
-       * Customer B
-       * Customer C
-       * Customer D
-       */
 
       closeTableModal();
 
@@ -795,8 +811,10 @@ export default function ManagePage({
   ) {
     return customerSlots.find(
       (slot) =>
-        slot.table_id === tableId &&
-        slot.slot_code === slotCode
+        slot.table_id ===
+          tableId &&
+        slot.slot_code ===
+          slotCode
     );
   }
 
@@ -834,43 +852,81 @@ export default function ManagePage({
     table: TableItem,
     slotCode: "A" | "B" | "C" | "D"
   ) {
-    const url = customerUrl(table, slotCode);
+    const url =
+      customerUrl(
+        table,
+        slotCode
+      );
 
     if (!url) return;
 
     try {
-      const dataUrl = await QRCode.toDataURL(url, {
-        width: 1000,
-        margin: 2,
-        errorCorrectionLevel: "H",
-        color: {
-          dark: "#11120f",
-          light: "#ffffff",
-        },
-      });
+      const dataUrl =
+        await QRCode.toDataURL(
+          url,
+          {
+            width: 1000,
+            margin: 2,
+            errorCorrectionLevel:
+              "H",
+            color: {
+              dark: "#11120f",
+              light: "#ffffff",
+            },
+          }
+        );
 
-      const link = document.createElement("a");
-      const safeTable = table.name
-        .trim()
-        .replace(/[^a-z0-9]+/gi, "-")
-        .replace(/^-|-$/g, "")
-        .toLowerCase() || "table";
+      const link =
+        document.createElement(
+          "a"
+        );
 
-      link.href = dataUrl;
-      link.download = `fexonic-${safeTable}-customer-${slotCode}-qr.png`;
-      document.body.appendChild(link);
+      const safeTable =
+        table.name
+          .trim()
+          .replace(
+            /[^a-z0-9]+/gi,
+            "-"
+          )
+          .replace(
+            /^-|-$/g,
+            ""
+          )
+          .toLowerCase() ||
+        "table";
+
+      link.href =
+        dataUrl;
+
+      link.download =
+        `fexonic-${safeTable}-customer-${slotCode}-qr.png`;
+
+      document.body.appendChild(
+        link
+      );
+
       link.click();
+
       link.remove();
     } catch (error) {
-      console.error("QR download error:", error);
-      window.alert("Could not download QR image.");
+      console.error(
+        "QR download error:",
+        error
+      );
+
+      window.alert(
+        "Could not download QR image."
+      );
     }
   }
 
   function openQr(
     table: TableItem
   ) {
-    setSelectedTable(table);
+    setSelectedTable(
+      table
+    );
+
     setQrModal(true);
   }
 
@@ -1097,18 +1153,21 @@ export default function ManagePage({
               </div>
 
               <div className="mt-header-actions">
-                
 
                 <button
                   type="button"
                   className="mt-primary"
-                  onClick={openAddMenu}
+                  onClick={
+                    openAddMenu
+                  }
                 >
                   <span>
                     +
                   </span>
+
                   Add item
                 </button>
+
               </div>
             </div>
 
@@ -1121,9 +1180,12 @@ export default function ManagePage({
 
                 <input
                   value={search}
-                  onChange={(event) =>
+                  onChange={(
+                    event
+                  ) =>
                     setSearch(
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
                   placeholder="Search food..."
@@ -1158,23 +1220,30 @@ export default function ManagePage({
                   }
                 >
                   All
+
                   <b>
                     {menuItems.length}
                   </b>
                 </button>
 
                 {categories.map(
-                  (category) => {
+                  (
+                    category
+                  ) => {
                     const count =
                       menuItems.filter(
-                        (item) =>
+                        (
+                          item
+                        ) =>
                           item.category_id ===
                           category.id
                       ).length;
 
                     return (
                       <button
-                        key={category.id}
+                        key={
+                          category.id
+                        }
                         type="button"
                         className={
                           selectedCategory ===
@@ -1188,7 +1257,9 @@ export default function ManagePage({
                           )
                         }
                       >
-                        {category.name}
+                        {
+                          category.name
+                        }
 
                         <b>
                           {count}
@@ -1198,21 +1269,13 @@ export default function ManagePage({
                   }
                 )}
 
-                <button
-                  type="button"
-                  className="mt-category mt-category-add"
-                  onClick={openCategoryModal}
-                >
-                  <b>+</b>
-                  Add category
-                </button>
-
               </div>
             </div>
 
             {filteredItems.length ===
             0 ? (
               <div className="mt-empty">
+
                 <div className="mt-empty-icon">
                   ▦
                 </div>
@@ -1239,14 +1302,19 @@ export default function ManagePage({
                     Add menu item
                   </button>
                 )}
+
               </div>
             ) : (
               <div className="mt-food-grid">
 
                 {filteredItems.map(
-                  (item) => (
+                  (
+                    item
+                  ) => (
                     <article
-                      key={item.id}
+                      key={
+                        item.id
+                      }
                       className="mt-food-card"
                     >
 
@@ -1266,6 +1334,7 @@ export default function ManagePage({
                           />
                         ) : (
                           <div className="mt-no-image">
+
                             <span>
                               ♨
                             </span>
@@ -1273,6 +1342,7 @@ export default function ManagePage({
                             <small>
                               No image
                             </small>
+
                           </div>
                         )}
 
@@ -1283,8 +1353,11 @@ export default function ManagePage({
                         <div className="mt-food-top">
 
                           <div>
+
                             <h3>
-                              {item.name}
+                              {
+                                item.name
+                              }
                             </h3>
 
                             <span>
@@ -1300,9 +1373,12 @@ export default function ManagePage({
 
                             {item.description ? (
                               <p className="mt-food-description">
-                                {item.description}
+                                {
+                                  item.description
+                                }
                               </p>
                             ) : null}
+
                           </div>
 
                           <strong>
@@ -1342,12 +1418,14 @@ export default function ManagePage({
                         </div>
 
                       </div>
+
                     </article>
                   )
                 )}
 
               </div>
             )}
+
           </section>
         )}
 
@@ -1359,7 +1437,9 @@ export default function ManagePage({
           <section className="mt-view">
 
             <div className="mt-view-header">
+
               <div>
+
                 <p className="mt-eyebrow">
                   QR & TABLES
                 </p>
@@ -1372,12 +1452,15 @@ export default function ManagePage({
                   Every table gets 4 customer
                   QR codes.
                 </span>
+
               </div>
 
               <button
                 type="button"
                 className="mt-primary"
-                onClick={openAddTable}
+                onClick={
+                  openAddTable
+                }
               >
                 <span>
                   +
@@ -1385,10 +1468,13 @@ export default function ManagePage({
 
                 Add table
               </button>
+
             </div>
 
             <div className="mt-table-info">
+
               <div>
+
                 <span>
                   Total tables
                 </span>
@@ -1396,6 +1482,7 @@ export default function ManagePage({
                 <strong>
                   {tables.length}
                 </strong>
+
               </div>
 
               <p>
@@ -1403,10 +1490,12 @@ export default function ManagePage({
                 codes for Customer A, B, C
                 and D.
               </p>
+
             </div>
 
             {tables.length === 0 ? (
               <div className="mt-empty">
+
                 <div className="mt-empty-icon">
                   QR
                 </div>
@@ -1428,14 +1517,19 @@ export default function ManagePage({
                 >
                   Add table
                 </button>
+
               </div>
             ) : (
               <div className="mt-table-grid">
 
                 {tables.map(
-                  (table) => (
+                  (
+                    table
+                  ) => (
                     <article
-                      key={table.id}
+                      key={
+                        table.id
+                      }
                       className="mt-table-card"
                     >
 
@@ -1443,30 +1537,35 @@ export default function ManagePage({
 
                         <div className="mt-table-number">
                           {table.name
-                            .slice(0, 1)
+                            .slice(
+                              0,
+                              1
+                            )
                             .toUpperCase()}
                         </div>
 
                         <div>
+
                           <span>
                             TABLE
                           </span>
 
                           <h3>
-                            {table.name}
+                            {
+                              table.name
+                            }
                           </h3>
+
                         </div>
 
                       </div>
 
-                      {/* =====================================
-                          FOUR CUSTOMER QR PREVIEWS
-                          ===================================== */}
-
                       <div className="mt-customer-qr-grid">
 
                         {CUSTOMER_SLOTS.map(
-                          (slot) => {
+                          (
+                            slot
+                          ) => {
                             const dbSlot =
                               getSlot(
                                 table.id,
@@ -1482,11 +1581,15 @@ export default function ManagePage({
                               >
 
                                 <div className="mt-customer-qr-title">
+
                                   <span>
-                                    {slot.code}
+                                    {
+                                      slot.code
+                                    }
                                   </span>
 
                                   <div>
+
                                     <strong>
                                       {
                                         slot.label
@@ -1498,16 +1601,20 @@ export default function ManagePage({
                                         ? "QR ready"
                                         : "QR slot"}
                                     </small>
+
                                   </div>
+
                                 </div>
 
                                 <div className="mt-qr-preview">
+
                                   <QR
                                     value={customerUrl(
                                       table,
                                       slot.code
                                     )}
                                   />
+
                                 </div>
 
                                 <div className="mt-customer-qr-actions">
@@ -1588,6 +1695,7 @@ export default function ManagePage({
 
               </div>
             )}
+
           </section>
         )}
 
@@ -1606,7 +1714,9 @@ export default function ManagePage({
         >
           <div
             className="mt-modal"
-            onClick={(event) =>
+            onClick={(
+              event
+            ) =>
               event.stopPropagation()
             }
           >
@@ -1616,6 +1726,7 @@ export default function ManagePage({
             <div className="mt-modal-header">
 
               <div>
+
                 <p className="mt-eyebrow">
                   MENU
                 </p>
@@ -1625,6 +1736,7 @@ export default function ManagePage({
                     ? "Edit food"
                     : "Add food"}
                 </h2>
+
               </div>
 
               <button
@@ -1641,46 +1753,70 @@ export default function ManagePage({
 
             <div className="mt-form">
 
+              {/* FOOD NAME */}
+
               <label>
+
                 <span>
                   Food name
                 </span>
 
                 <input
-                  value={menuName}
-                  onChange={(event) =>
+                  value={
+                    menuName
+                  }
+                  onChange={(
+                    event
+                  ) =>
                     setMenuName(
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
                   placeholder="Chicken Biriyani"
                 />
+
               </label>
 
+              {/* DESCRIPTION */}
+
               <label>
+
                 <span>
                   Description
                 </span>
 
                 <textarea
-                  value={menuDescription}
-                  onChange={(event) =>
-                    setMenuDescription(event.target.value)
+                  value={
+                    menuDescription
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setMenuDescription(
+                      event.target
+                        .value
+                    )
                   }
                   placeholder="Short description of the food..."
                   rows={3}
                   maxLength={300}
                 />
+
               </label>
+
+              {/* PRICE + CATEGORY */}
 
               <div className="mt-form-row">
 
                 <label>
+
                   <span>
                     Price
                   </span>
 
                   <div className="mt-price-input">
+
                     <b>
                       ₹
                     </b>
@@ -1689,58 +1825,93 @@ export default function ManagePage({
                       type="number"
                       min="0"
                       step="0.01"
-                      value={menuPrice}
-                      onChange={(event) =>
+                      value={
+                        menuPrice
+                      }
+                      onChange={(
+                        event
+                      ) =>
                         setMenuPrice(
-                          event.target.value
+                          event.target
+                            .value
                         )
                       }
                       placeholder="250"
                     />
+
                   </div>
+
                 </label>
 
+                {/* CATEGORY */}
+
                 <label>
+
                   <span>
                     Category
                   </span>
 
-                  <select
-                    value={
-                      menuCategory
-                    }
-                    onChange={(event) =>
-                      setMenuCategory(
-                        event.target.value
-                      )
-                    }
-                  >
-                    <option value="">
-                      No category
-                    </option>
+                  <div className="mt-category-select-row">
 
-                    {categories.map(
-                      (category) => (
-                        <option
-                          key={
-                            category.id
-                          }
-                          value={
-                            category.id
-                          }
-                        >
-                          {
-                            category.name
-                          }
-                        </option>
-                      )
-                    )}
-                  </select>
+                    <select
+                      value={
+                        menuCategory
+                      }
+                      onChange={(
+                        event
+                      ) =>
+                        setMenuCategory(
+                          event.target
+                            .value
+                        )
+                      }
+                    >
+
+                      <option value="">
+                        No category
+                      </option>
+
+                      {categories.map(
+                        (
+                          category
+                        ) => (
+                          <option
+                            key={
+                              category.id
+                            }
+                            value={
+                              category.id
+                            }
+                          >
+                            {
+                              category.name
+                            }
+                          </option>
+                        )
+                      )}
+
+                    </select>
+
+                    <button
+                      type="button"
+                      className="mt-inline-add-category"
+                      onClick={
+                        openCategoryModal
+                      }
+                    >
+                      +
+                    </button>
+
+                  </div>
+
                 </label>
 
               </div>
 
+              {/* FOOD IMAGE */}
+
               <label>
+
                 <span>
                   Food image
                 </span>
@@ -1750,7 +1921,9 @@ export default function ManagePage({
                   <input
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       setMenuImage(
                         event.target
                           .files?.[0] ||
@@ -1760,10 +1933,12 @@ export default function ManagePage({
                   />
 
                   <div>
+
                     <strong>
                       {menuImage
                         ? menuImage.name
-                        : editingItem?.image
+                        : editingItem
+                            ?.image
                             ?.url
                         ? "Current image"
                         : "Choose food image"}
@@ -1772,6 +1947,7 @@ export default function ManagePage({
                     <small>
                       PNG, JPG or WEBP
                     </small>
+
                   </div>
 
                   <span>
@@ -1779,7 +1955,10 @@ export default function ManagePage({
                   </span>
 
                 </div>
+
               </label>
+
+              {/* IMAGE PREVIEW */}
 
               <div className="mt-preview">
 
@@ -1790,11 +1969,13 @@ export default function ManagePage({
                     )}
                     alt="Preview"
                   />
-                ) : editingItem?.image
+                ) : editingItem
+                    ?.image
                     ?.url ? (
                   <img
                     src={
-                      editingItem.image
+                      editingItem
+                        .image
                         .url
                     }
                     alt={
@@ -1803,6 +1984,7 @@ export default function ManagePage({
                   />
                 ) : (
                   <div>
+
                     <span>
                       ♨
                     </span>
@@ -1810,6 +1992,7 @@ export default function ManagePage({
                     <small>
                       Food image preview
                     </small>
+
                   </div>
                 )}
 
@@ -1862,18 +2045,25 @@ export default function ManagePage({
       {categoryModal && (
         <div
           className="mt-modal-overlay"
-          onClick={closeCategoryModal}
+          onClick={
+            closeCategoryModal
+          }
         >
           <div
             className="mt-modal mt-small-modal"
-            onClick={(event) =>
+            onClick={(
+              event
+            ) =>
               event.stopPropagation()
             }
           >
+
             <div className="mt-modal-handle" />
 
             <div className="mt-modal-header">
+
               <div>
+
                 <p className="mt-eyebrow">
                   MENU ORGANIZATION
                 </p>
@@ -1881,50 +2071,75 @@ export default function ManagePage({
                 <h2>
                   Add category
                 </h2>
+
               </div>
 
               <button
                 type="button"
                 className="mt-close"
-                onClick={closeCategoryModal}
+                onClick={
+                  closeCategoryModal
+                }
               >
                 ×
               </button>
+
             </div>
 
             <div className="mt-form">
+
               <label>
+
                 <span>
                   Category name
                 </span>
 
                 <input
-                  value={categoryName}
-                  onChange={(event) =>
+                  value={
+                    categoryName
+                  }
+                  onChange={(
+                    event
+                  ) =>
                     setCategoryName(
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
                   placeholder="Biriyani, Starters, Drinks..."
                   maxLength={60}
                   autoFocus
                 />
+
               </label>
 
               <div className="mt-category-modal-note">
-                <span>✦</span>
+
+                <span>
+                  ✦
+                </span>
+
                 <p>
-                  Categories keep your customer menu clean and easy to browse.
+                  Categories keep your
+                  customer menu clean and
+                  easy to browse.
                 </p>
+
               </div>
+
             </div>
 
             <div className="mt-modal-actions">
+
               <button
                 type="button"
                 className="mt-cancel"
-                onClick={closeCategoryModal}
-                disabled={categorySaving}
+                onClick={
+                  closeCategoryModal
+                }
+                disabled={
+                  categorySaving
+                }
               >
                 Cancel
               </button>
@@ -1932,14 +2147,20 @@ export default function ManagePage({
               <button
                 type="button"
                 className="mt-save"
-                onClick={addCategory}
-                disabled={categorySaving}
+                onClick={
+                  addCategory
+                }
+                disabled={
+                  categorySaving
+                }
               >
                 {categorySaving
                   ? "Adding..."
                   : "Add category"}
               </button>
+
             </div>
+
           </div>
         </div>
       )}
@@ -1957,7 +2178,9 @@ export default function ManagePage({
         >
           <div
             className="mt-modal mt-small-modal"
-            onClick={(event) =>
+            onClick={(
+              event
+            ) =>
               event.stopPropagation()
             }
           >
@@ -1967,6 +2190,7 @@ export default function ManagePage({
             <div className="mt-modal-header">
 
               <div>
+
                 <p className="mt-eyebrow">
                   QR & TABLES
                 </p>
@@ -1974,6 +2198,7 @@ export default function ManagePage({
                 <h2>
                   Add table
                 </h2>
+
               </div>
 
               <button
@@ -1991,23 +2216,31 @@ export default function ManagePage({
             <div className="mt-form">
 
               <label>
+
                 <span>
                   Table name
                 </span>
 
                 <input
-                  value={tableName}
-                  onChange={(event) =>
+                  value={
+                    tableName
+                  }
+                  onChange={(
+                    event
+                  ) =>
                     setTableName(
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
                   placeholder="Table 1"
                   autoFocus
                 />
+
               </label>
 
               <div className="mt-table-example">
+
                 <div>
                   T
                 </div>
@@ -2020,6 +2253,7 @@ export default function ManagePage({
                   </strong>
                   QR slots.
                 </span>
+
               </div>
 
             </div>
@@ -2068,11 +2302,15 @@ export default function ManagePage({
         selectedTable && (
           <div
             className="mt-modal-overlay"
-            onClick={closeQr}
+            onClick={
+              closeQr
+            }
           >
             <div
               className="mt-qr-modal mt-all-qr-modal"
-              onClick={(event) =>
+              onClick={(
+                event
+              ) =>
                 event.stopPropagation()
               }
             >
@@ -2082,7 +2320,9 @@ export default function ManagePage({
               <button
                 type="button"
                 className="mt-qr-close"
-                onClick={closeQr}
+                onClick={
+                  closeQr
+                }
               >
                 ×
               </button>
@@ -2092,7 +2332,9 @@ export default function ManagePage({
               </p>
 
               <h2>
-                {selectedTable.name}
+                {
+                  selectedTable.name
+                }
               </h2>
 
               <p className="mt-qr-description">
@@ -2103,7 +2345,9 @@ export default function ManagePage({
               <div className="mt-all-qr-grid">
 
                 {CUSTOMER_SLOTS.map(
-                  (slot) => (
+                  (
+                    slot
+                  ) => (
                     <div
                       key={
                         slot.code
@@ -2112,11 +2356,15 @@ export default function ManagePage({
                     >
 
                       <div className="mt-customer-qr-title">
+
                         <span>
-                          {slot.code}
+                          {
+                            slot.code
+                          }
                         </span>
 
                         <div>
+
                           <strong>
                             {
                               slot.label
@@ -2126,23 +2374,29 @@ export default function ManagePage({
                           <small>
                             Scan to order
                           </small>
+
                         </div>
+
                       </div>
 
                       <div className="mt-big-qr">
+
                         <QR
                           value={customerUrl(
                             selectedTable,
                             slot.code
                           )}
                         />
+
                       </div>
 
                       <div className="mt-qr-url">
+
                         {customerUrl(
                           selectedTable,
                           slot.code
                         )}
+
                       </div>
 
                       <div className="mt-qr-actions">
