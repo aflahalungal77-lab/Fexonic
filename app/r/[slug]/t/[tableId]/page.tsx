@@ -95,13 +95,6 @@ const requestOptions: {
   },
 ];
 
-const CUSTOMER_SLOTS: CustomerSlotCode[] = [
-  "A",
-  "B",
-  "C",
-  "D",
-];
-
 function isCustomerSlot(
   value: string | null
 ): value is CustomerSlotCode {
@@ -120,21 +113,6 @@ export default function Customer({
 }) {
   const [p, setP] =
     useState<CustomerParams | null>(null);
-
-  /*
-   * =========================================================
-   * CUSTOMER SLOT
-   * =========================================================
-   *
-   * QR URL:
-   *
-   * /r/restaurant-slug/t/table-id?customer=A
-   * /r/restaurant-slug/t/table-id?customer=B
-   * /r/restaurant-slug/t/table-id?customer=C
-   * /r/restaurant-slug/t/table-id?customer=D
-   *
-   * UI remains unchanged except for showing the customer label.
-   */
 
   const [customerSlot, setCustomerSlot] =
     useState<CustomerSlotCode | null>(null);
@@ -166,6 +144,18 @@ export default function Customer({
       id: string;
       total: number;
     } | null>(null);
+
+  /*
+   * =========================================================
+   * ORDER NEED / NOTE
+   * =========================================================
+   */
+
+  const [needOpen, setNeedOpen] =
+    useState(false);
+
+  const [orderNeed, setOrderNeed] =
+    useState("");
 
   const [supportOpen, setSupportOpen] =
     useState(false);
@@ -203,9 +193,6 @@ export default function Customer({
 
       setP(value);
 
-      /*
-       * Read ?customer=A/B/C/D
-       */
       if (typeof window !== "undefined") {
         const query =
           new URLSearchParams(
@@ -278,7 +265,6 @@ export default function Customer({
       } catch (error) {
         if (!cancelled) {
           console.error(error);
-
           setMsg(
             "Failed to load menu"
           );
@@ -494,7 +480,6 @@ export default function Customer({
         );
 
         oscillator.connect(gain);
-
         gain.connect(
           audioContext.destination
         );
@@ -547,6 +532,45 @@ export default function Customer({
   }
 
   /* =========================================================
+     OPEN ORDER NEED
+  ========================================================== */
+
+  function openOrderNeed() {
+    if (!restaurant || !p || ordering) {
+      return;
+    }
+
+    if (!customerSlot) {
+      setMsg(
+        "This table QR is missing a customer code. Please scan the correct Customer A, B, C or D QR."
+      );
+      return;
+    }
+
+    const rows = items
+      .filter(
+        (item) =>
+          cart[item.id] > 0
+      );
+
+    if (rows.length === 0) {
+      setMsg(
+        "Add something to your cart first."
+      );
+      return;
+    }
+
+    setOrderNeed("");
+    setNeedOpen(true);
+  }
+
+  function closeOrderNeed() {
+    if (ordering) return;
+
+    setNeedOpen(false);
+  }
+
+  /* =========================================================
      PLACE ORDER
   ========================================================== */
 
@@ -555,10 +579,6 @@ export default function Customer({
       return;
     }
 
-    /*
-     * Customer A/B/C/D is required for the
-     * new QR-based customer separation.
-     */
     if (!customerSlot) {
       setMsg(
         "This table QR is missing a customer code. Please scan the correct Customer A, B, C or D QR."
@@ -602,13 +622,14 @@ export default function Customer({
             table_id:
               p.tableId,
 
-            /*
-             * New Customer A/B/C/D value.
-             */
             customer:
               customerSlot,
 
             items: rows,
+
+            need:
+              orderNeed.trim() ||
+              null,
 
             device_key:
               getDeviceKey(),
@@ -642,6 +663,8 @@ export default function Customer({
         );
       }
 
+      setNeedOpen(false);
+      setOrderNeed("");
       setCart({});
 
       setOrderSuccess({
@@ -704,10 +727,6 @@ export default function Customer({
       return;
     }
 
-    /*
-     * Support request also carries
-     * the customer code.
-     */
     if (!customerSlot) {
       setMsg(
         "This table QR is missing a customer code."
@@ -734,9 +753,6 @@ export default function Customer({
               table_id:
                 p.tableId,
 
-              /*
-               * New Customer A/B/C/D value.
-               */
               customer:
                 customerSlot,
 
@@ -854,9 +870,7 @@ export default function Customer({
   return (
     <main className="fxc-customer">
 
-      {/* =====================================================
-          STICKY HEADER
-      ====================================================== */}
+      {/* STICKY HEADER */}
 
       <header className="fxc-header">
         <div className="fxc-header-inner">
@@ -941,9 +955,7 @@ export default function Customer({
         </div>
       </header>
 
-      {/* =====================================================
-          HERO
-      ====================================================== */}
+      {/* HERO */}
 
       <section className="fxc-hero">
         <div className="fxc-hero-inner">
@@ -992,9 +1004,7 @@ export default function Customer({
         </div>
       </section>
 
-      {/* =====================================================
-          MENU AREA
-      ====================================================== */}
+      {/* MENU */}
 
       <section className="fxc-content">
 
@@ -1029,9 +1039,7 @@ export default function Customer({
 
         </div>
 
-        {/* ===================================================
-            SEARCH + FILTER
-        ==================================================== */}
+        {/* SEARCH + FILTER */}
 
         <div className="fxc-discovery">
 
@@ -1093,10 +1101,6 @@ export default function Customer({
           </button>
 
         </div>
-
-        {/* ===================================================
-            FILTER PANEL
-        ==================================================== */}
 
         {filterOpen && (
           <div className="fxc-filter-panel">
@@ -1185,8 +1189,6 @@ export default function Customer({
           </div>
         )}
 
-        {/* ACTIVE FILTER */}
-
         {priceFilter !== "ALL" && (
           <div className="fxc-active-filter">
 
@@ -1211,10 +1213,6 @@ export default function Customer({
 
           </div>
         )}
-
-        {/* ===================================================
-            MENU
-        ==================================================== */}
 
         {items.length === 0 ? (
           <div className="fxc-empty">
@@ -1383,7 +1381,6 @@ export default function Customer({
                                 item.id
                               )
                             }
-                            aria-label={`Remove one ${item.name}`}
                           >
                             −
                           </button>
@@ -1405,7 +1402,6 @@ export default function Customer({
                                 item.id
                               )
                             }
-                            aria-label={`Add one ${item.name}`}
                           >
                             +
                           </button>
@@ -1427,9 +1423,7 @@ export default function Customer({
 
       </section>
 
-      {/* =====================================================
-          STICKY CART
-      ====================================================== */}
+      {/* STICKY CART */}
 
       {itemCount > 0 && (
         <div className="fxc-cart-bar">
@@ -1461,7 +1455,7 @@ export default function Customer({
             <button
               type="button"
               className="fxc-order-button"
-              onClick={order}
+              onClick={openOrderNeed}
               disabled={ordering}
             >
               {ordering ? (
@@ -1489,7 +1483,6 @@ export default function Customer({
 
           <div className="fxc-cart-trust">
             <span>✓</span>
-
             Secure table-linked ordering · Sent directly to kitchen
           </div>
 
@@ -1497,8 +1490,105 @@ export default function Customer({
       )}
 
       {/* =====================================================
-          SUPPORT MODAL
+          ORDER NEED MODAL
       ====================================================== */}
+
+      {needOpen && (
+        <div
+          className="fxc-modal-backdrop"
+          onClick={closeOrderNeed}
+        >
+          <div
+            className="fxc-order-need-modal"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+            role="dialog"
+            aria-modal="true"
+          >
+
+            <div className="fxc-modal-top">
+
+              <div>
+                <span className="fxc-modal-label">
+                  ORDER NOTE
+                </span>
+
+                <h2>
+                  Anything we should know?
+                </h2>
+
+                <p>
+                  Add a special request for
+                  your order.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="fxc-modal-close"
+                onClick={closeOrderNeed}
+                disabled={ordering}
+                aria-label="Close"
+              >
+                ×
+              </button>
+
+            </div>
+
+            <textarea
+              className="fxc-order-need-input"
+              value={orderNeed}
+              onChange={(event) =>
+                setOrderNeed(
+                  event.target.value
+                )
+              }
+              placeholder='Example: "Less spicy", "No onion", "Extra sauce"...'
+              maxLength={500}
+              rows={5}
+              autoFocus
+            />
+
+            <div className="fxc-order-need-meta">
+              <span>
+                Optional
+              </span>
+
+              <span>
+                {orderNeed.length}/500
+              </span>
+            </div>
+
+            <button
+              type="button"
+              className="fxc-send-request"
+              onClick={order}
+              disabled={ordering}
+            >
+              {ordering
+                ? "Placing order…"
+                : "Submit & place order"}
+
+              <span>
+                →
+              </span>
+            </button>
+
+            <div className="fxc-support-note">
+              <span>✓</span>
+
+              <p>
+                Your note will be sent with
+                this order to the kitchen.
+              </p>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* SUPPORT MODAL */}
 
       {supportOpen && (
         <div
@@ -1704,9 +1794,7 @@ export default function Customer({
         </div>
       )}
 
-      {/* =====================================================
-          ORDER SUCCESS
-      ====================================================== */}
+      {/* ORDER SUCCESS */}
 
       {orderSuccess && (
         <div className="fxc-modal-backdrop">

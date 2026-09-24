@@ -10282,3 +10282,347 @@ a {
     font-size: 22px;
   }
 }
+
+
+/* =========================================================
+   MANAGE PAGE — NEW / UPDATED FEATURES
+   Add this BELOW the existing Manage page CSS
+   ========================================================= */
+
+/* -------------------------
+   Food description
+   ------------------------- */
+
+.mt-food-description {
+  margin: 7px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+
+/* -------------------------
+   Description textarea
+   ------------------------- */
+
+.mt-form textarea {
+  width: 100%;
+  min-height: 88px;
+  padding: 12px 14px;
+
+  border: 1px solid #dbe3df;
+  border-radius: 12px;
+
+  background: #fbfdfc;
+  color: #17231f;
+
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+
+  resize: vertical;
+  outline: none;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.mt-form textarea::placeholder {
+  color: #9aa8a2;
+}
+
+.mt-form textarea:focus {
+  border-color: #8cc9ad;
+  background: #ffffff;
+
+  box-shadow:
+    0 0 0 3px rgba(76, 175, 125, 0.10);
+}
+
+
+/* -------------------------
+   Category management
+   ------------------------- */
+
+.mt-category-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+
+  min-height: 38px;
+  padding: 0 14px;
+
+  border: 1px dashed #9bcab1;
+  border-radius: 11px;
+
+  background: #f5fbf7;
+  color: #16734b;
+
+  font-size: 13px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.mt-category-add:hover {
+  background: #eaf7ef;
+  border-color: #69ad8b;
+  transform: translateY(-1px);
+}
+
+.mt-category-add span {
+  font-size: 17px;
+  line-height: 1;
+}
+
+
+/* -------------------------
+   Category create modal
+   ------------------------- */
+
+.mt-category-modal {
+  width: min(430px, calc(100vw - 32px));
+}
+
+.mt-category-modal .mt-modal-header {
+  margin-bottom: 22px;
+}
+
+.mt-category-modal .mt-form {
+  margin-bottom: 20px;
+}
+
+
+/* -------------------------
+   Premium QR download button
+   ------------------------- */
+
+.mt-download-qr {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+
+  min-height: 38px;
+  padding: 0 13px;
+
+  border: 1px solid #b9ddc8;
+  border-radius: 10px;
+
+  background: #f2fbf5;
+  color: #176b46;
+
+  font-size: 12px;
+  font-weight: 750;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.mt-download-qr:hover {
+  background: #e3f6ea;
+  border-color: #79bb96;
+  color: #105c3b;
+
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 5px 14px rgba(31, 108, 69, 0.10);
+}
+
+.mt-download-qr:active {
+  transform: translateY(0);
+}
+
+.mt-download-qr-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 20px;
+  height: 20px;
+
+  border-radius: 6px;
+
+  background: #d9f0e2;
+
+  font-size: 13px;
+  font-weight: 800;
+}
+
+
+/* -------------------------
+   QR action layout
+   ------------------------- */
+
+.mt-customer-qr-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.mt-customer-qr-actions .mt-qr-button,
+.mt-customer-qr-actions .mt-download-qr {
+  width: 100%;
+}
+
+
+/* -------------------------
+   QR modal download action
+   ------------------------- */
+
+.mt-qr-actions .mt-download-qr {
+  flex: 1;
+}
+
+.mt-qr-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mt-qr-actions > button {
+  flex: 1;
+  min-width: 120px;
+}
+
+
+/* -------------------------
+   QR URL — better wrapping
+   ------------------------- */
+
+.mt-qr-url {
+  word-break: break-all;
+  overflow-wrap: anywhere;
+
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+
+/* -------------------------
+   Category pills — improved
+   ------------------------- */
+
+.mt-categories {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  flex-wrap: wrap;
+}
+
+.mt-category {
+  white-space: nowrap;
+}
+
+
+/* -------------------------
+   Category empty state
+   ------------------------- */
+
+.mt-no-category {
+  display: inline-flex;
+  align-items: center;
+
+  padding: 4px 8px;
+
+  border-radius: 7px;
+
+  background: #f3f5f4;
+  color: #78847f;
+
+  font-size: 11px;
+  font-weight: 650;
+}
+
+
+/* -------------------------
+   Mobile
+   ------------------------- */
+
+@media (max-width: 640px) {
+  .mt-customer-qr-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .mt-download-qr {
+    min-height: 40px;
+  }
+
+  .mt-qr-actions {
+    flex-direction: column;
+  }
+
+  .mt-qr-actions > button {
+    width: 100%;
+    flex: none;
+  }
+
+  .mt-food-description {
+    font-size: 12px;
+  }
+
+  .mt-form textarea {
+    min-height: 82px;
+  }
+}
+
+/* =========================================
+   NAV LINK HOVER / ACTIVE UNDERLINE
+   ========================================= */
+
+.fx-home-links a {
+  position: relative;
+  text-decoration: none;
+  color: inherit;
+}
+
+/* underline */
+.fx-home-links a::after {
+  content: "";
+  position: absolute;
+
+  left: 0;
+  bottom: -7px;
+
+  width: 100%;
+  height: 2px;
+
+  background: currentColor;
+
+  transform: scaleX(0);
+  transform-origin: center;
+
+  transition: transform 0.22s ease;
+}
+
+/* hover */
+.fx-home-links a:hover::after {
+  transform: scaleX(1);
+}
+
+/* active */
+.fx-home-links a.active::after {
+  transform: scaleX(1);
+}
+

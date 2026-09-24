@@ -6,7 +6,10 @@ import {
   useMemo,
   useState,
 } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import {
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase";
 import KitchenShell from "@/components/KitchenShell";
 
@@ -24,21 +27,46 @@ type OrderItem = {
   price: number | string;
 };
 
+type CustomerSlot = {
+  slot_code: "A" | "B" | "C" | "D";
+};
+
 type Order = {
   id: string;
   status: OrderStatus;
   total: number | string | null;
   created_at: string;
   table_id: string | null;
+
+  /*
+   * Customer A/B/C/D
+   */
+  customer_slot_id: string | null;
+
+  /*
+   * Customer's special need.
+   */
+  need: string | null;
+
   tables?: {
     name: string;
   } | null;
+
+  customer_slots?: CustomerSlot | null;
+
   order_items?: OrderItem[];
 };
 
-type FilterStatus = "ALL" | "NEW" | "PREPARING" | "READY";
+type FilterStatus =
+  | "ALL"
+  | "NEW"
+  | "PREPARING"
+  | "READY";
 
-const statusLabels: Record<OrderStatus, string> = {
+const statusLabels: Record<
+  OrderStatus,
+  string
+> = {
   NEW: "New",
   PREPARING: "Preparing",
   READY: "Ready",
@@ -47,14 +75,18 @@ const statusLabels: Record<OrderStatus, string> = {
 };
 
 function formatTime(value: string) {
-  return new Date(value).toLocaleTimeString("en-IN", {
+  return new Date(
+    value
+  ).toLocaleTimeString("en-IN", {
     hour: "2-digit",
     minute: "2-digit",
   });
 }
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("en-IN", {
+  return new Date(
+    value
+  ).toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -62,34 +94,62 @@ function formatDate(value: string) {
 }
 
 function shortOrderId(id: string) {
-  return `#${id.slice(0, 6).toUpperCase()}`;
+  return `#${id
+    .slice(0, 6)
+    .toUpperCase()}`;
 }
 
-function money(value: number | string | null | undefined) {
-  return `₹${Number(value || 0).toFixed(0)}`;
+function money(
+  value:
+    | number
+    | string
+    | null
+    | undefined
+) {
+  return `₹${Number(
+    value || 0
+  ).toFixed(0)}`;
 }
 
 export default function OrdersPage({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{
+    slug: string;
+  }>;
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams =
+    useSearchParams();
 
-  const [slug, setSlug] = useState("");
-  const [restaurant, setRestaurant] = useState<any>(null);
+  const [slug, setSlug] =
+    useState("");
 
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [restaurant, setRestaurant] =
+    useState<any>(null);
 
-  const [busyOrder, setBusyOrder] = useState<string | null>(null);
+  const [orders, setOrders] =
+    useState<Order[]>([]);
 
-  const [selectedOrder, setSelectedOrder] =
+  const [loading, setLoading] =
+    useState(true);
+
+  const [refreshing, setRefreshing] =
+    useState(false);
+
+  const [busyOrder, setBusyOrder] =
+    useState<string | null>(null);
+
+  const [
+    selectedOrder,
+    setSelectedOrder,
+  ] =
     useState<Order | null>(null);
 
-  const [requestsCount, setRequestsCount] = useState(0);
+  const [
+    requestsCount,
+    setRequestsCount,
+  ] = useState(0);
 
   const [filter, setFilter] =
     useState<FilterStatus>("ALL");
@@ -101,7 +161,8 @@ export default function OrdersPage({
   }, [params]);
 
   useEffect(() => {
-    const status = searchParams.get("status");
+    const status =
+      searchParams.get("status");
 
     if (
       status === "NEW" ||
@@ -114,93 +175,138 @@ export default function OrdersPage({
     }
   }, [searchParams]);
 
-  const loadOrders = useCallback(async () => {
-    if (!slug) return;
+  const loadOrders =
+    useCallback(async () => {
+      if (!slug) return;
 
-    setRefreshing(true);
+      setRefreshing(true);
 
-    try {
-      const supabase = supabaseBrowser();
+      try {
+        const supabase =
+          supabaseBrowser();
 
-      const {
-        data: restaurantData,
-        error: restaurantError,
-      } = await supabase
-        .from("restaurants")
-        .select("*")
-        .eq("slug", slug)
-        .single();
+        const {
+          data: restaurantData,
+          error:
+            restaurantError,
+        } = await supabase
+          .from("restaurants")
+          .select("*")
+          .eq("slug", slug)
+          .single();
 
-      if (restaurantError || !restaurantData) {
-        router.replace("/kitchen");
-        return;
-      }
+        if (
+          restaurantError ||
+          !restaurantData
+        ) {
+          router.replace(
+            "/kitchen"
+          );
+          return;
+        }
 
-      setRestaurant(restaurantData);
-
-      const [
-        { data: orderData, error: orderError },
-        { count: requestCount, error: requestError },
-      ] = await Promise.all([
-        supabase
-          .from("orders")
-          .select(
-            `
-              id,
-              status,
-              total,
-              created_at,
-              table_id,
-              tables(name),
-              order_items(
-                id,
-                name,
-                quantity,
-                price
-              )
-            `
-          )
-          .eq("restaurant_id", restaurantData.id)
-          .in("status", [
-            "NEW",
-            "PREPARING",
-            "READY",
-          ])
-          .order("created_at", {
-            ascending: false,
-          })
-          .limit(100),
-
-        supabase
-          .from("customer_requests")
-          .select("id", {
-            count: "exact",
-            head: true,
-          })
-          .eq("restaurant_id", restaurantData.id)
-          .eq("status", "PENDING"),
-      ]);
-
-      if (orderError) {
-        throw orderError;
-      }
-
-      if (requestError) {
-        console.error(
-          "Request count error:",
-          requestError
+        setRestaurant(
+          restaurantData
         );
-      }
 
-      setOrders(orderData || []);
-      setRequestsCount(requestCount || 0);
-    } catch (error) {
-      console.error("Orders loading error:", error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [router, slug]);
+        const [
+          {
+            data: orderData,
+            error: orderError,
+          },
+          {
+            count: requestCount,
+            error: requestError,
+          },
+        ] =
+          await Promise.all([
+            supabase
+              .from("orders")
+              .select(
+                `
+                  id,
+                  status,
+                  total,
+                  created_at,
+                  table_id,
+                  customer_slot_id,
+                  need,
+                  tables(name),
+                  customer_slots(
+                    slot_code
+                  ),
+                  order_items(
+                    id,
+                    name,
+                    quantity,
+                    price
+                  )
+                `
+              )
+              .eq(
+                "restaurant_id",
+                restaurantData.id
+              )
+              .in("status", [
+                "NEW",
+                "PREPARING",
+                "READY",
+              ])
+              .order(
+                "created_at",
+                {
+                  ascending: false,
+                }
+              )
+              .limit(100),
+
+            supabase
+              .from(
+                "customer_requests"
+              )
+              .select("id", {
+                count: "exact",
+                head: true,
+              })
+              .eq(
+                "restaurant_id",
+                restaurantData.id
+              )
+              .eq(
+                "status",
+                "PENDING"
+              ),
+          ]);
+
+        if (orderError) {
+          throw orderError;
+        }
+
+        if (requestError) {
+          console.error(
+            "Request count error:",
+            requestError
+          );
+        }
+
+        setOrders(
+          (orderData ||
+            []) as Order[]
+        );
+
+        setRequestsCount(
+          requestCount || 0
+        );
+      } catch (error) {
+        console.error(
+          "Orders loading error:",
+          error
+        );
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    }, [router, slug]);
 
   useEffect(() => {
     loadOrders();
@@ -209,15 +315,21 @@ export default function OrdersPage({
   useEffect(() => {
     if (!restaurant?.id) return;
 
-    const interval = window.setInterval(
-      loadOrders,
-      8000
-    );
+    const interval =
+      window.setInterval(
+        loadOrders,
+        8000
+      );
 
     return () => {
-      window.clearInterval(interval);
+      window.clearInterval(
+        interval
+      );
     };
-  }, [loadOrders, restaurant?.id]);
+  }, [
+    loadOrders,
+    restaurant?.id,
+  ]);
 
   async function updateOrderStatus(
     orderId: string,
@@ -228,13 +340,20 @@ export default function OrdersPage({
     setBusyOrder(orderId);
 
     try {
-      const { error } = await supabaseBrowser()
-        .from("orders")
-        .update({
-          status,
-        })
-        .eq("id", orderId)
-        .eq("restaurant_id", restaurant.id);
+      const { error } =
+        await supabaseBrowser()
+          .from("orders")
+          .update({
+            status,
+          })
+          .eq(
+            "id",
+            orderId
+          )
+          .eq(
+            "restaurant_id",
+            restaurant.id
+          );
 
       if (error) {
         throw error;
@@ -253,30 +372,44 @@ export default function OrdersPage({
     }
   }
 
-  const counts = useMemo(() => {
-    return {
-      all: orders.length,
-      new: orders.filter(
-        (order) => order.status === "NEW"
-      ).length,
-      preparing: orders.filter(
-        (order) => order.status === "PREPARING"
-      ).length,
-      ready: orders.filter(
-        (order) => order.status === "READY"
-      ).length,
-    };
-  }, [orders]);
+  const counts =
+    useMemo(() => {
+      return {
+        all: orders.length,
 
-  const filteredOrders = useMemo(() => {
-    if (filter === "ALL") {
-      return orders;
-    }
+        new: orders.filter(
+          (order) =>
+            order.status ===
+            "NEW"
+        ).length,
 
-    return orders.filter(
-      (order) => order.status === filter
-    );
-  }, [orders, filter]);
+        preparing:
+          orders.filter(
+            (order) =>
+              order.status ===
+              "PREPARING"
+          ).length,
+
+        ready: orders.filter(
+          (order) =>
+            order.status ===
+            "READY"
+        ).length,
+      };
+    }, [orders]);
+
+  const filteredOrders =
+    useMemo(() => {
+      if (filter === "ALL") {
+        return orders;
+      }
+
+      return orders.filter(
+        (order) =>
+          order.status ===
+          filter
+      );
+    }, [orders, filter]);
 
   function changeFilter(
     nextFilter: FilterStatus
@@ -284,7 +417,9 @@ export default function OrdersPage({
     setFilter(nextFilter);
 
     if (nextFilter === "ALL") {
-      router.push(`/k/${slug}/orders`);
+      router.push(
+        `/k/${slug}/orders`
+      );
       return;
     }
 
@@ -293,7 +428,10 @@ export default function OrdersPage({
     );
   }
 
-  if (!restaurant && loading) {
+  if (
+    !restaurant &&
+    loading
+  ) {
     return (
       <main className="fx-app">
         <div className="ko-loading">
@@ -302,7 +440,9 @@ export default function OrdersPage({
               M
             </div>
 
-            <strong>Man.ko</strong>
+            <strong>
+              Man.ko
+            </strong>
 
             <span>
               Loading kitchen orders…
@@ -326,6 +466,7 @@ export default function OrdersPage({
       requests={requestsCount}
     >
       <div className="ko-page">
+
         {/* PAGE HEADER */}
 
         <section className="ko-page-header">
@@ -334,19 +475,26 @@ export default function OrdersPage({
               KITCHEN WORKSPACE
             </p>
 
-            <h1>Orders</h1>
+            <h1>
+              Orders
+            </h1>
 
             <p className="ko-subtitle">
-              Manage incoming orders and keep
-              the kitchen moving.
+              Manage incoming orders
+              and keep the kitchen
+              moving.
             </p>
           </div>
 
           <button
             type="button"
             className="ko-refresh"
-            onClick={loadOrders}
-            disabled={refreshing}
+            onClick={
+              loadOrders
+            }
+            disabled={
+              refreshing
+            }
           >
             <span
               className={
@@ -367,14 +515,19 @@ export default function OrdersPage({
         {/* SUMMARY */}
 
         <section className="ko-summary">
+
           <div className="ko-summary-card">
             <span className="ko-summary-label">
               Total active
             </span>
 
-            <strong>{counts.all}</strong>
+            <strong>
+              {counts.all}
+            </strong>
 
-            <small>Open orders</small>
+            <small>
+              Open orders
+            </small>
           </div>
 
           <div className="ko-summary-card ko-summary-new">
@@ -382,9 +535,13 @@ export default function OrdersPage({
               New
             </span>
 
-            <strong>{counts.new}</strong>
+            <strong>
+              {counts.new}
+            </strong>
 
-            <small>Needs attention</small>
+            <small>
+              Needs attention
+            </small>
           </div>
 
           <div className="ko-summary-card ko-summary-preparing">
@@ -392,9 +549,13 @@ export default function OrdersPage({
               Preparing
             </span>
 
-            <strong>{counts.preparing}</strong>
+            <strong>
+              {counts.preparing}
+            </strong>
 
-            <small>In kitchen</small>
+            <small>
+              In kitchen
+            </small>
           </div>
 
           <div className="ko-summary-card ko-summary-ready">
@@ -402,16 +563,22 @@ export default function OrdersPage({
               Ready
             </span>
 
-            <strong>{counts.ready}</strong>
+            <strong>
+              {counts.ready}
+            </strong>
 
-            <small>Waiting to serve</small>
+            <small>
+              Waiting to serve
+            </small>
           </div>
+
         </section>
 
         {/* FILTER BAR */}
 
         <section className="ko-filter-wrap">
           <div className="ko-filter-scroll">
+
             <button
               type="button"
               className={
@@ -420,11 +587,18 @@ export default function OrdersPage({
                   : "ko-filter"
               }
               onClick={() =>
-                changeFilter("ALL")
+                changeFilter(
+                  "ALL"
+                )
               }
             >
-              <span>All</span>
-              <b>{counts.all}</b>
+              <span>
+                All
+              </span>
+
+              <b>
+                {counts.all}
+              </b>
             </button>
 
             <button
@@ -435,56 +609,83 @@ export default function OrdersPage({
                   : "ko-filter ko-filter-new"
               }
               onClick={() =>
-                changeFilter("NEW")
+                changeFilter(
+                  "NEW"
+                )
               }
             >
-              <span>New</span>
-              <b>{counts.new}</b>
+              <span>
+                New
+              </span>
+
+              <b>
+                {counts.new}
+              </b>
             </button>
 
             <button
               type="button"
               className={
-                filter === "PREPARING"
+                filter ===
+                "PREPARING"
                   ? "ko-filter active"
                   : "ko-filter"
               }
               onClick={() =>
-                changeFilter("PREPARING")
+                changeFilter(
+                  "PREPARING"
+                )
               }
             >
-              <span>Preparing</span>
-              <b>{counts.preparing}</b>
+              <span>
+                Preparing
+              </span>
+
+              <b>
+                {counts.preparing}
+              </b>
             </button>
 
             <button
               type="button"
               className={
-                filter === "READY"
+                filter ===
+                "READY"
                   ? "ko-filter active"
                   : "ko-filter"
               }
               onClick={() =>
-                changeFilter("READY")
+                changeFilter(
+                  "READY"
+                )
               }
             >
-              <span>Ready</span>
-              <b>{counts.ready}</b>
+              <span>
+                Ready
+              </span>
+
+              <b>
+                {counts.ready}
+              </b>
             </button>
+
           </div>
         </section>
 
         {/* ORDERS */}
 
         <section className="ko-orders-section">
+
           <div className="ko-section-heading">
+
             <div>
               <p className="ko-eyebrow">
                 LIVE ORDERS
               </p>
 
               <h2>
-                {filter === "ALL"
+                {filter ===
+                "ALL"
                   ? "Current orders"
                   : `${statusLabels[filter]} orders`}
               </h2>
@@ -494,31 +695,36 @@ export default function OrdersPage({
               <i />
               Live
             </span>
+
           </div>
 
           {loading ? (
             <div className="ko-order-grid">
-              {[1, 2, 3].map((item) => (
-                <div
-                  className="ko-skeleton-card"
-                  key={item}
-                >
-                  <div className="ko-skeleton ko-sk-small" />
-                  <div className="ko-skeleton ko-sk-title" />
-                  <div className="ko-skeleton ko-sk-line" />
-                  <div className="ko-skeleton ko-sk-line" />
-                  <div className="ko-skeleton ko-sk-button" />
-                </div>
-              ))}
+              {[1, 2, 3].map(
+                (item) => (
+                  <div
+                    className="ko-skeleton-card"
+                    key={item}
+                  >
+                    <div className="ko-skeleton ko-sk-small" />
+                    <div className="ko-skeleton ko-sk-title" />
+                    <div className="ko-skeleton ko-sk-line" />
+                    <div className="ko-skeleton ko-sk-line" />
+                    <div className="ko-skeleton ko-sk-button" />
+                  </div>
+                )
+              )}
             </div>
           ) : filteredOrders.length === 0 ? (
             <div className="ko-empty">
+
               <div className="ko-empty-icon">
                 ✓
               </div>
 
               <h3>
-                {filter === "ALL"
+                {filter ===
+                "ALL"
                   ? "No active orders"
                   : `No ${statusLabels[
                       filter
@@ -526,169 +732,380 @@ export default function OrdersPage({
               </h3>
 
               <p>
-                New customer orders will appear
-                here automatically.
+                New customer orders
+                will appear here
+                automatically.
               </p>
 
-              {filter !== "ALL" && (
+              {filter !==
+                "ALL" && (
                 <button
                   type="button"
                   onClick={() =>
-                    changeFilter("ALL")
+                    changeFilter(
+                      "ALL"
+                    )
                   }
                 >
                   View all orders
                 </button>
               )}
+
             </div>
           ) : (
             <div className="ko-order-grid">
-              {filteredOrders.map((order) => {
-                const itemCount =
-                  order.order_items?.reduce(
-                    (total, item) =>
-                      total + Number(item.quantity || 0),
-                    0
-                  ) || 0;
 
-                return (
-                  <article
-                    className={`ko-order-card ko-order-${order.status.toLowerCase()}`}
-                    key={order.id}
-                  >
-                    {/* TOP */}
+              {filteredOrders.map(
+                (order) => {
+                  const itemCount =
+                    order.order_items?.reduce(
+                      (
+                        total,
+                        item
+                      ) =>
+                        total +
+                        Number(
+                          item.quantity ||
+                            0
+                        ),
+                      0
+                    ) || 0;
 
-                    <div className="ko-card-top">
-                      <div
-                        className={`ko-status ko-status-${order.status.toLowerCase()}`}
-                      >
-                        <span />
+                  const customerCode =
+                    order
+                      .customer_slots
+                      ?.slot_code;
 
-                        {
-                          statusLabels[
-                            order.status
-                          ]
-                        }
-                      </div>
+                  return (
+                    <article
+                      className={`ko-order-card ko-order-${order.status.toLowerCase()}`}
+                      key={
+                        order.id
+                      }
+                    >
 
-                      <span className="ko-order-time">
-                        {formatTime(
-                          order.created_at
-                        )}
-                      </span>
-                    </div>
+                      {/* TOP */}
 
-                    {/* TABLE / ID */}
+                      <div className="ko-card-top">
 
-                    <div className="ko-order-heading">
-                      <div>
-                        <h3>
-                          {order.tables?.name ||
-                            "Table"}
-                        </h3>
+                        <div
+                          className={`ko-status ko-status-${order.status.toLowerCase()}`}
+                        >
+                          <span />
 
-                        <p>
-                          {shortOrderId(
-                            order.id
-                          )}
-                          <span>•</span>
-                          {formatDate(
+                          {
+                            statusLabels[
+                              order.status
+                            ]
+                          }
+                        </div>
+
+                        <span className="ko-order-time">
+                          {formatTime(
                             order.created_at
                           )}
-                        </p>
+                        </span>
+
                       </div>
 
-                      <strong>
-                        {money(order.total)}
-                      </strong>
-                    </div>
+                      {/* TABLE / ID */}
 
-                    {/* ITEMS */}
+                      <div className="ko-order-heading">
 
-                    <div className="ko-items">
-                      {(
-                        order.order_items || []
-                      ).map((item) => (
-                        <div
-                          className="ko-item"
-                          key={item.id}
-                        >
-                          <div>
-                            <b>
-                              {item.quantity}
-                            </b>
+                        <div>
+
+                          <h3>
+                            {order
+                              .tables
+                              ?.name ||
+                              "Table"}
+                          </h3>
+
+                          <p>
+                            {shortOrderId(
+                              order.id
+                            )}
 
                             <span>
-                              {item.name}
+                              •
                             </span>
-                          </div>
 
-                          <strong>
-                            {money(
-                              Number(
-                                item.price
-                              ) *
-                                Number(
-                                  item.quantity
-                                )
+                            {formatDate(
+                              order.created_at
                             )}
-                          </strong>
+                          </p>
+
                         </div>
-                      ))}
-                    </div>
 
-                    {/* META */}
+                        <strong>
+                          {money(
+                            order.total
+                          )}
+                        </strong>
 
-                    <div className="ko-card-meta">
-                      <span>
-                        {itemCount}{" "}
-                        {itemCount === 1
-                          ? "item"
-                          : "items"}
-                      </span>
+                      </div>
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setSelectedOrder(
-                            order
-                          )
-                        }
-                      >
-                        View details
-                        <span>→</span>
-                      </button>
-                    </div>
+                      {/* CUSTOMER */}
 
-                    {/* ACTIONS */}
-
-                    <div className="ko-actions">
-                      {order.status ===
-                        "NEW" && (
-                        <>
-                          <button
-                            type="button"
-                            className="ko-button ko-button-secondary"
-                            disabled={
-                              busyOrder ===
-                              order.id
-                            }
-                            onClick={() =>
-                              updateOrderStatus(
-                                order.id,
-                                "CANCELLED"
-                              )
-                            }
+                      {customerCode && (
+                        <div
+                          className="ko-customer-info"
+                          style={{
+                            marginTop:
+                              "10px",
+                            marginBottom:
+                              "10px",
+                            display:
+                              "flex",
+                            alignItems:
+                              "center",
+                            gap: "8px",
+                          }}
+                        >
+                          <span
+                            style={{
+                              display:
+                                "inline-flex",
+                              alignItems:
+                                "center",
+                              justifyContent:
+                                "center",
+                              minWidth:
+                                "30px",
+                              height:
+                                "30px",
+                              borderRadius:
+                                "9px",
+                              background:
+                                "#eaf7ef",
+                              color:
+                                "#16734b",
+                              fontSize:
+                                "12px",
+                              fontWeight:
+                                800,
+                            }}
                           >
-                            {busyOrder ===
-                            order.id
-                              ? "..."
-                              : "Reject"}
-                          </button>
+                            {customerCode}
+                          </span>
 
+                          <div>
+                            <small
+                              style={{
+                                display:
+                                  "block",
+                                fontSize:
+                                  "10px",
+                                fontWeight:
+                                  700,
+                                letterSpacing:
+                                  ".08em",
+                                textTransform:
+                                  "uppercase",
+                                color:
+                                  "#89958f",
+                              }}
+                            >
+                              Customer
+                            </small>
+
+                            <strong
+                              style={{
+                                fontSize:
+                                  "13px",
+                                color:
+                                  "#26332e",
+                              }}
+                            >
+                              Customer{" "}
+                              {customerCode}
+                            </strong>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* NEED */}
+
+                      {order.need && (
+                        <div
+                          className="ko-order-need"
+                          style={{
+                            marginBottom:
+                              "12px",
+                            padding:
+                              "11px 12px",
+                            borderRadius:
+                              "12px",
+                            background:
+                              "#f7faf8",
+                            border:
+                              "1px solid #e2ebe5",
+                          }}
+                        >
+                          <span
+                            style={{
+                              display:
+                                "block",
+                              marginBottom:
+                                "4px",
+                              fontSize:
+                                "10px",
+                              fontWeight:
+                                800,
+                              letterSpacing:
+                                ".08em",
+                              textTransform:
+                                "uppercase",
+                              color:
+                                "#7a8982",
+                            }}
+                          >
+                            Customer need
+                          </span>
+
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize:
+                                "13px",
+                              lineHeight:
+                                1.5,
+                              color:
+                                "#26332e",
+                            }}
+                          >
+                            {order.need}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* ITEMS */}
+
+                      <div className="ko-items">
+
+                        {(
+                          order.order_items ||
+                          []
+                        ).map(
+                          (item) => (
+                            <div
+                              className="ko-item"
+                              key={
+                                item.id
+                              }
+                            >
+                              <div>
+                                <b>
+                                  {
+                                    item.quantity
+                                  }
+                                </b>
+
+                                <span>
+                                  {
+                                    item.name
+                                  }
+                                </span>
+                              </div>
+
+                              <strong>
+                                {money(
+                                  Number(
+                                    item.price
+                                  ) *
+                                    Number(
+                                      item.quantity
+                                    )
+                                )}
+                              </strong>
+                            </div>
+                          )
+                        )}
+
+                      </div>
+
+                      {/* META */}
+
+                      <div className="ko-card-meta">
+
+                        <span>
+                          {itemCount}{" "}
+                          {itemCount ===
+                          1
+                            ? "item"
+                            : "items"}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedOrder(
+                              order
+                            )
+                          }
+                        >
+                          View details
+                          <span>
+                            →
+                          </span>
+                        </button>
+
+                      </div>
+
+                      {/* ACTIONS */}
+
+                      <div className="ko-actions">
+
+                        {order.status ===
+                          "NEW" && (
+                          <>
+                            <button
+                              type="button"
+                              className="ko-button ko-button-secondary"
+                              disabled={
+                                busyOrder ===
+                                order.id
+                              }
+                              onClick={() =>
+                                updateOrderStatus(
+                                  order.id,
+                                  "CANCELLED"
+                                )
+                              }
+                            >
+                              {busyOrder ===
+                              order.id
+                                ? "..."
+                                : "Reject"}
+                            </button>
+
+                            <button
+                              type="button"
+                              className="ko-button ko-button-primary"
+                              disabled={
+                                busyOrder ===
+                                order.id
+                              }
+                              onClick={() =>
+                                updateOrderStatus(
+                                  order.id,
+                                  "PREPARING"
+                                )
+                              }
+                            >
+                              {busyOrder ===
+                              order.id
+                                ? "Updating..."
+                                : "Accept order"}
+                            </button>
+                          </>
+                        )}
+
+                        {order.status ===
+                          "PREPARING" && (
                           <button
                             type="button"
-                            className="ko-button ko-button-primary"
+                            className="ko-button ko-button-primary ko-button-full"
                             disabled={
                               busyOrder ===
                               order.id
@@ -696,77 +1113,59 @@ export default function OrdersPage({
                             onClick={() =>
                               updateOrderStatus(
                                 order.id,
-                                "PREPARING"
+                                "READY"
                               )
                             }
                           >
                             {busyOrder ===
                             order.id
                               ? "Updating..."
-                              : "Accept order"}
+                              : "Mark as ready →"}
                           </button>
-                        </>
-                      )}
+                        )}
 
-                      {order.status ===
-                        "PREPARING" && (
-                        <button
-                          type="button"
-                          className="ko-button ko-button-primary ko-button-full"
-                          disabled={
-                            busyOrder ===
+                        {order.status ===
+                          "READY" && (
+                          <button
+                            type="button"
+                            className="ko-button ko-button-primary ko-button-full"
+                            disabled={
+                              busyOrder ===
+                              order.id
+                            }
+                            onClick={() =>
+                              updateOrderStatus(
+                                order.id,
+                                "SERVED"
+                              )
+                            }
+                          >
+                            {busyOrder ===
                             order.id
-                          }
-                          onClick={() =>
-                            updateOrderStatus(
-                              order.id,
-                              "READY"
-                            )
-                          }
-                        >
-                          {busyOrder ===
-                          order.id
-                            ? "Updating..."
-                            : "Mark as ready →"}
-                        </button>
-                      )}
+                              ? "Updating..."
+                              : "Mark as served ✓"}
+                          </button>
+                        )}
 
-                      {order.status ===
-                        "READY" && (
-                        <button
-                          type="button"
-                          className="ko-button ko-button-primary ko-button-full"
-                          disabled={
-                            busyOrder ===
-                            order.id
-                          }
-                          onClick={() =>
-                            updateOrderStatus(
-                              order.id,
-                              "SERVED"
-                            )
-                          }
-                        >
-                          {busyOrder ===
-                          order.id
-                            ? "Updating..."
-                            : "Mark as served ✓"}
-                        </button>
-                      )}
-                    </div>
-                  </article>
-                );
-              })}
+                      </div>
+
+                    </article>
+                  );
+                }
+              )}
+
             </div>
           )}
+
         </section>
 
-        {/* MOBILE BOTTOM SPACE */}
-
         <div className="ko-mobile-bottom-space" />
+
       </div>
 
-      {/* ORDER DETAIL SHEET */}
+      {/* =====================================================
+          ORDER DETAIL SHEET
+      ====================================================== */}
 
       {selectedOrder && (
         <div
@@ -781,14 +1180,18 @@ export default function OrdersPage({
               event.stopPropagation()
             }
           >
+
             <div className="ko-detail-handle" />
 
             <div className="ko-detail-header">
+
               <div>
+
                 <span
                   className={`ko-status ko-status-${selectedOrder.status.toLowerCase()}`}
                 >
                   <span />
+
                   {
                     statusLabels[
                       selectedOrder.status
@@ -797,8 +1200,10 @@ export default function OrdersPage({
                 </span>
 
                 <h2>
-                  {selectedOrder.tables
-                    ?.name || "Table"}
+                  {selectedOrder
+                    .tables
+                    ?.name ||
+                    "Table"}
                 </h2>
 
                 <p>
@@ -814,59 +1219,229 @@ export default function OrdersPage({
                     selectedOrder.created_at
                   )}
                 </p>
+
               </div>
 
               <button
                 type="button"
                 className="ko-detail-close"
                 onClick={() =>
-                  setSelectedOrder(null)
+                  setSelectedOrder(
+                    null
+                  )
                 }
               >
                 ×
               </button>
+
             </div>
 
+            {/* CUSTOMER */}
+
+            {selectedOrder
+              .customer_slots
+              ?.slot_code && (
+              <div
+                style={{
+                  marginBottom:
+                    "16px",
+                  padding:
+                    "12px 14px",
+                  borderRadius:
+                    "12px",
+                  background:
+                    "#f4faf6",
+                  border:
+                    "1px solid #dcebe1",
+                  display:
+                    "flex",
+                  alignItems:
+                    "center",
+                  gap: "10px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "34px",
+                    height: "34px",
+                    borderRadius:
+                      "10px",
+                    display:
+                      "flex",
+                    alignItems:
+                      "center",
+                    justifyContent:
+                      "center",
+                    background:
+                      "#dff3e7",
+                    color:
+                      "#176b46",
+                    fontWeight:
+                      800,
+                  }}
+                >
+                  {
+                    selectedOrder
+                      .customer_slots
+                      .slot_code
+                  }
+                </div>
+
+                <div>
+                  <small
+                    style={{
+                      display:
+                        "block",
+                      fontSize:
+                        "10px",
+                      fontWeight:
+                        800,
+                      textTransform:
+                        "uppercase",
+                      letterSpacing:
+                        ".08em",
+                      color:
+                        "#829089",
+                    }}
+                  >
+                    Customer
+                  </small>
+
+                  <strong
+                    style={{
+                      fontSize:
+                        "14px",
+                      color:
+                        "#24322c",
+                    }}
+                  >
+                    Customer{" "}
+                    {
+                      selectedOrder
+                        .customer_slots
+                        .slot_code
+                    }
+                  </strong>
+                </div>
+              </div>
+            )}
+
+            {/* CUSTOMER NEED */}
+
+            {selectedOrder.need && (
+              <div
+                style={{
+                  marginBottom:
+                    "18px",
+                  padding:
+                    "14px",
+                  borderRadius:
+                    "14px",
+                  background:
+                    "#fffdf5",
+                  border:
+                    "1px solid #eee7c9",
+                }}
+              >
+                <span
+                  style={{
+                    display:
+                      "block",
+                    marginBottom:
+                      "6px",
+                    fontSize:
+                      "10px",
+                    fontWeight:
+                      800,
+                    letterSpacing:
+                      ".08em",
+                    textTransform:
+                      "uppercase",
+                    color:
+                      "#8b805c",
+                  }}
+                >
+                  Customer need
+                </span>
+
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize:
+                      "14px",
+                    lineHeight:
+                      1.55,
+                    fontWeight:
+                      600,
+                    color:
+                      "#403b29",
+                  }}
+                >
+                  {selectedOrder.need}
+                </p>
+              </div>
+            )}
+
             <div className="ko-detail-items">
+
               {(
                 selectedOrder.order_items ||
                 []
-              ).map((item) => (
-                <div
-                  className="ko-detail-item"
-                  key={item.id}
-                >
-                  <div>
-                    <strong>
-                      {item.quantity} ×
-                    </strong>
-
-                    <span>
-                      {item.name}
-                    </span>
-                  </div>
-
-                  <b>
-                    {money(
-                      Number(item.price) *
-                        Number(
+              ).map(
+                (item) => (
+                  <div
+                    className="ko-detail-item"
+                    key={
+                      item.id
+                    }
+                  >
+                    <div>
+                      <strong>
+                        {
                           item.quantity
-                        )
-                    )}
-                  </b>
-                </div>
-              ))}
+                        }{" "}
+                        ×
+                      </strong>
+
+                      <span>
+                        {
+                          item.name
+                        }
+                      </span>
+                    </div>
+
+                    <b>
+                      {money(
+                        Number(
+                          item.price
+                        ) *
+                          Number(
+                            item.quantity
+                          )
+                      )}
+                    </b>
+                  </div>
+                )
+              )}
+
             </div>
 
             <div className="ko-detail-total">
-              <span>Total</span>
+
+              <span>
+                Total
+              </span>
 
               <strong>
-                {money(selectedOrder.total)}
+                {money(
+                  selectedOrder.total
+                )}
               </strong>
+
             </div>
 
             <div className="ko-detail-actions">
+
               {selectedOrder.status ===
                 "NEW" && (
                 <>
@@ -945,10 +1520,13 @@ export default function OrdersPage({
                   Mark as served ✓
                 </button>
               )}
+
             </div>
+
           </div>
         </div>
       )}
+
     </KitchenShell>
   );
 }

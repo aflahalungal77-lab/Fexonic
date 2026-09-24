@@ -171,13 +171,6 @@ export async function POST(
 
     // =====================================================
     // CUSTOMER SLOT
-    //
-    // Customer page sends:
-    //
-    // customer: "A"
-    //
-    // We validate that A/B/C/D belongs to
-    // this exact restaurant + table.
     // =====================================================
 
     const customerCode =
@@ -247,6 +240,18 @@ export async function POST(
         }
       );
     }
+
+    // =====================================================
+    // ORDER NEED
+    // =====================================================
+
+    const orderNeed =
+      typeof body.need ===
+      "string"
+        ? body.need
+            .trim()
+            .slice(0, 500)
+        : "";
 
     // =====================================================
     // MENU VALIDATION
@@ -431,11 +436,6 @@ export async function POST(
 
     // =====================================================
     // BILLING SESSION
-    //
-    // One physical table still has one billing session.
-    //
-    // Customer A/B/C/D are separated through
-    // customer_slot_id on each order.
     // =====================================================
 
     let billingSessionId:
@@ -519,10 +519,6 @@ export async function POST(
         table_id:
           table.id,
 
-        /*
-         * NEW:
-         * Customer A/B/C/D slot ID
-         */
         customer_slot_id:
           customerSlot.id,
 
@@ -536,9 +532,20 @@ export async function POST(
 
         status:
           "NEW",
+
+        /*
+         * Customer's special request.
+         *
+         * Example:
+         * "Less spicy"
+         * "No onion"
+         * "Extra sauce"
+         */
+        need:
+          orderNeed || null,
       })
       .select(
-        "id,total,customer_slot_id"
+        "id,total,customer_slot_id,need"
       )
       .single();
 
@@ -572,10 +579,6 @@ export async function POST(
       );
 
     if (orderItemsError) {
-      /*
-       * Roll back the order if
-       * order items fail.
-       */
       await supabase
         .from("orders")
         .delete()
@@ -606,6 +609,9 @@ export async function POST(
 
         billing_session_id:
           billingSessionId,
+
+        need:
+          orderNeed || null,
       },
       {
         status: 201,

@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 
 import KitchenShell from "@/components/KitchenShell";
 import QR from "@/components/QR";
+import QRCode from "qrcode";
 import { supabaseBrowser } from "@/lib/supabase";
 
 type ManageTab = "menu" | "tables";
@@ -38,6 +39,7 @@ type MenuItem = {
   restaurant_id: string;
   category_id: string | null;
   name: string;
+  description?: string | null;
   price: number | string;
   image:
     | {
@@ -136,6 +138,9 @@ export default function ManagePage({
   const [menuPrice, setMenuPrice] =
     useState("");
 
+  const [menuDescription, setMenuDescription] =
+    useState("");
+
   const [menuCategory, setMenuCategory] =
     useState("");
 
@@ -143,6 +148,19 @@ export default function ManagePage({
     useState<File | null>(null);
 
   const [menuSaving, setMenuSaving] =
+    useState(false);
+
+  /* =========================
+     CATEGORY MODAL
+     ========================= */
+
+  const [categoryModal, setCategoryModal] =
+    useState(false);
+
+  const [categoryName, setCategoryName] =
+    useState("");
+
+  const [categorySaving, setCategorySaving] =
     useState(false);
 
   /* =========================
@@ -329,6 +347,7 @@ export default function ManagePage({
     setEditingItem(null);
     setMenuName("");
     setMenuPrice("");
+    setMenuDescription("");
     setMenuCategory("");
     setMenuImage(null);
   }
@@ -344,6 +363,7 @@ export default function ManagePage({
     setEditingItem(item);
     setMenuName(item.name);
     setMenuPrice(String(item.price));
+    setMenuDescription(item.description || "");
     setMenuCategory(
       item.category_id || ""
     );
@@ -452,6 +472,7 @@ export default function ManagePage({
           .from("menu_items")
           .update({
             name,
+            description: menuDescription.trim() || null,
             price,
             category_id:
               menuCategory || null,
@@ -480,6 +501,7 @@ export default function ManagePage({
             restaurant_id:
               restaurant.id,
             name,
+            description: menuDescription.trim() || null,
             price,
             category_id:
               menuCategory || null,
@@ -553,6 +575,66 @@ export default function ManagePage({
         error?.message ||
           "Could not delete item."
       );
+    }
+  }
+
+  /* =========================
+     CATEGORIES
+     ========================= */
+
+  function openCategoryModal() {
+    setCategoryName("");
+    setCategoryModal(true);
+  }
+
+  function closeCategoryModal() {
+    if (categorySaving) return;
+
+    setCategoryModal(false);
+    setCategoryName("");
+  }
+
+  async function addCategory() {
+    if (!restaurant) return;
+
+    const name = categoryName.trim();
+
+    if (!name) {
+      window.alert("Please enter a category name.");
+      return;
+    }
+
+    setCategorySaving(true);
+
+    try {
+      const supabase = supabaseBrowser();
+
+      const { data, error } = await supabase
+        .from("menu_categories")
+        .insert({
+          restaurant_id: restaurant.id,
+          name,
+        })
+        .select("id,name")
+        .single();
+
+      if (error) throw error;
+
+      setCategoryModal(false);
+      setCategoryName("");
+
+      await loadData();
+
+      if (data?.id) {
+        setMenuCategory(data.id);
+      }
+    } catch (error: any) {
+      console.error("Category add error:", error);
+      window.alert(
+        error?.message || "Could not add category."
+      );
+    } finally {
+      setCategorySaving(false);
     }
   }
 
@@ -748,23 +830,41 @@ export default function ManagePage({
     }
   }
 
-  function openCustomerMenu(
+  async function downloadCustomerQr(
     table: TableItem,
-    slotCode?: "A" | "B" | "C" | "D"
+    slotCode: "A" | "B" | "C" | "D"
   ) {
-    const url =
-      customerUrl(
-        table,
-        slotCode
-      );
+    const url = customerUrl(table, slotCode);
 
     if (!url) return;
 
-    window.open(
-      url,
-      "_blank",
-      "noopener,noreferrer"
-    );
+    try {
+      const dataUrl = await QRCode.toDataURL(url, {
+        width: 1000,
+        margin: 2,
+        errorCorrectionLevel: "H",
+        color: {
+          dark: "#11120f",
+          light: "#ffffff",
+        },
+      });
+
+      const link = document.createElement("a");
+      const safeTable = table.name
+        .trim()
+        .replace(/[^a-z0-9]+/gi, "-")
+        .replace(/^-|-$/g, "")
+        .toLowerCase() || "table";
+
+      link.href = dataUrl;
+      link.download = `fexonic-${safeTable}-customer-${slotCode}-qr.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error("QR download error:", error);
+      window.alert("Could not download QR image.");
+    }
   }
 
   function openQr(
@@ -996,17 +1096,20 @@ export default function ManagePage({
                 </span>
               </div>
 
-              <button
-                type="button"
-                className="mt-primary"
-                onClick={openAddMenu}
-              >
-                <span>
-                  +
-                </span>
+              <div className="mt-header-actions">
+                
 
-                Add item
-              </button>
+                <button
+                  type="button"
+                  className="mt-primary"
+                  onClick={openAddMenu}
+                >
+                  <span>
+                    +
+                  </span>
+                  Add item
+                </button>
+              </div>
             </div>
 
             <div className="mt-menu-toolbar">
@@ -1095,6 +1198,15 @@ export default function ManagePage({
                   }
                 )}
 
+                <button
+                  type="button"
+                  className="mt-category mt-category-add"
+                  onClick={openCategoryModal}
+                >
+                  <b>+</b>
+                  Add category
+                </button>
+
               </div>
             </div>
 
@@ -1164,18 +1276,6 @@ export default function ManagePage({
                           </div>
                         )}
 
-                        <button
-                          type="button"
-                          className="mt-image-edit"
-                          onClick={() =>
-                            openEditMenu(
-                              item
-                            )
-                          }
-                        >
-                          ✎
-                        </button>
-
                       </div>
 
                       <div className="mt-food-body">
@@ -1197,6 +1297,12 @@ export default function ManagePage({
                               )?.name ||
                                 "Food item"}
                             </span>
+
+                            {item.description ? (
+                              <p className="mt-food-description">
+                                {item.description}
+                              </p>
+                            ) : null}
                           </div>
 
                           <strong>
@@ -1421,15 +1527,15 @@ export default function ManagePage({
 
                                   <button
                                     type="button"
-                                    className="mt-open-button"
+                                    className="mt-download-button"
                                     onClick={() =>
-                                      openCustomerMenu(
+                                      downloadCustomerQr(
                                         table,
                                         slot.code
                                       )
                                     }
                                   >
-                                    Open
+                                    ↓ Download QR
                                   </button>
 
                                 </div>
@@ -1548,6 +1654,22 @@ export default function ManagePage({
                     )
                   }
                   placeholder="Chicken Biriyani"
+                />
+              </label>
+
+              <label>
+                <span>
+                  Description
+                </span>
+
+                <textarea
+                  value={menuDescription}
+                  onChange={(event) =>
+                    setMenuDescription(event.target.value)
+                  }
+                  placeholder="Short description of the food..."
+                  rows={3}
+                  maxLength={300}
                 />
               </label>
 
@@ -1729,6 +1851,95 @@ export default function ManagePage({
 
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ====================================================
+          ADD CATEGORY MODAL
+          ==================================================== */}
+
+      {categoryModal && (
+        <div
+          className="mt-modal-overlay"
+          onClick={closeCategoryModal}
+        >
+          <div
+            className="mt-modal mt-small-modal"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <div className="mt-modal-handle" />
+
+            <div className="mt-modal-header">
+              <div>
+                <p className="mt-eyebrow">
+                  MENU ORGANIZATION
+                </p>
+
+                <h2>
+                  Add category
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                className="mt-close"
+                onClick={closeCategoryModal}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mt-form">
+              <label>
+                <span>
+                  Category name
+                </span>
+
+                <input
+                  value={categoryName}
+                  onChange={(event) =>
+                    setCategoryName(
+                      event.target.value
+                    )
+                  }
+                  placeholder="Biriyani, Starters, Drinks..."
+                  maxLength={60}
+                  autoFocus
+                />
+              </label>
+
+              <div className="mt-category-modal-note">
+                <span>✦</span>
+                <p>
+                  Categories keep your customer menu clean and easy to browse.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-modal-actions">
+              <button
+                type="button"
+                className="mt-cancel"
+                onClick={closeCategoryModal}
+                disabled={categorySaving}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className="mt-save"
+                onClick={addCategory}
+                disabled={categorySaving}
+              >
+                {categorySaving
+                  ? "Adding..."
+                  : "Add category"}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1951,15 +2162,15 @@ export default function ManagePage({
 
                         <button
                           type="button"
-                          className="mt-cancel"
+                          className="mt-cancel mt-download-modal-button"
                           onClick={() =>
-                            openCustomerMenu(
+                            downloadCustomerQr(
                               selectedTable,
                               slot.code
                             )
                           }
                         >
-                          Open menu
+                          ↓ Download QR
                         </button>
 
                       </div>

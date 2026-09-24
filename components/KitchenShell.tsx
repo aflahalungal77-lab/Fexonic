@@ -22,13 +22,6 @@ type IconName =
   | "orders"
   | "requests"
   | "tables"
-  | "menu"
-  | "grid"
-  | "staff"
-  | "settings"
-  | "reports"
-  | "history"
-  | "feedback"
   | "logout"
   | "close"
   | "chevron"
@@ -94,75 +87,6 @@ function Icon({
         </svg>
       );
 
-    case "menu":
-      return (
-        <svg {...common}>
-          <path d="M6 3v7" />
-          <path d="M9 3v7" />
-          <path d="M12 3v7" />
-          <path d="M6 10c0 2 1.5 3 3 3s3-1 3-3" />
-          <path d="M9 13v8" />
-          <path d="M17 3v18" />
-          <path d="M17 3c2 2 3 4 3 7h-3" />
-        </svg>
-      );
-
-    case "grid":
-      return (
-        <svg {...common}>
-          <rect x="4" y="4" width="6" height="6" rx="1" />
-          <rect x="14" y="4" width="6" height="6" rx="1" />
-          <rect x="4" y="14" width="6" height="6" rx="1" />
-          <rect x="14" y="14" width="6" height="6" rx="1" />
-        </svg>
-      );
-
-    case "staff":
-      return (
-        <svg {...common}>
-          <circle cx="9" cy="8" r="3" />
-          <circle cx="17" cy="9" r="2.5" />
-          <path d="M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5" />
-          <path d="M15 15c3 0 5 1.5 5 4" />
-        </svg>
-      );
-
-    case "settings":
-      return (
-        <svg {...common}>
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 1.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V20h-2.5v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1-1.8-1.8.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H6v-2.5h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1L9 6.7l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V5h2.5v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1 1.8 1.8-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.1v2.5h-.1a1.7 1.7 0 0 0-1.5 1Z" />
-        </svg>
-      );
-
-    case "reports":
-      return (
-        <svg {...common}>
-          <path d="M4 19V9" />
-          <path d="M10 19V5" />
-          <path d="M16 19v-7" />
-          <path d="M22 19V3" />
-        </svg>
-      );
-
-    case "history":
-      return (
-        <svg {...common}>
-          <circle cx="12" cy="12" r="8.5" />
-          <path d="M12 7v5l3 2" />
-          <path d="M4 5v4h4" />
-        </svg>
-      );
-
-    case "feedback":
-      return (
-        <svg {...common}>
-          <path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-4 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" />
-          <path d="M8 10h8" />
-          <path d="M8 14h5" />
-        </svg>
-      );
-
     case "logout":
       return (
         <svg {...common}>
@@ -220,8 +144,7 @@ export default function KitchenShell({
   const router = useRouter();
   const [mobileMenu, setMobileMenu] = useState(false);
 
-  const restaurantName =
-    restaurant?.name || "Restaurant";
+  const restaurantName = restaurant?.name || "Restaurant";
 
   const go = (path: string) => {
     setMobileMenu(false);
@@ -230,7 +153,7 @@ export default function KitchenShell({
 
   /*
    * =====================================================
-   * MAIN NAVIGATION
+   * WORKSPACE
    * =====================================================
    */
 
@@ -256,10 +179,10 @@ export default function KitchenShell({
       badge: requests,
     },
     {
-      key: "manage" as const,
-      label: "Manage",
-      icon: "tables" as IconName,
-      path: `/k/${slug}/manage`,
+      key: "order-details" as const,
+      label: "Order Details",
+      icon: "orders" as IconName,
+      path: `/k/${slug}/order-details`,
     },
   ];
 
@@ -271,34 +194,10 @@ export default function KitchenShell({
 
   const managementNavigation = [
     {
-      label: "Menu",
-      icon: "menu" as IconName,
+      key: "manage" as const,
+      label: "Manage",
+      icon: "tables" as IconName,
       path: `/k/${slug}/manage`,
-    },
-    {
-      label: "Tables & QR",
-      icon: "grid" as IconName,
-      path: `/k/${slug}/manage`,
-    },
-    {
-      label: "Order Details",
-      icon: "orders" as IconName,
-      path: `/k/${slug}/order-details`,
-      key: "order-details",
-    },
-  ];
-
-  /*
-   * =====================================================
-   * BUSINESS
-   * =====================================================
-   */
-
-  const businessNavigation = [
-    {
-      label: "Order History",
-      icon: "history" as IconName,
-      path: null,
     },
   ];
 
@@ -412,28 +311,11 @@ export default function KitchenShell({
             </div>
 
             <nav className="fx-sidebar-nav">
-              {managementNavigation.map(
-                (item) =>
-                  renderNavItem(
-                    item,
-                    active ===
-                      item.key
-                  )
-              )}
-            </nav>
-          </div>
-
-          {/* BUSINESS */}
-
-          <div className="fx-sidebar-section">
-            <div className="fx-sidebar-section-title">
-              BUSINESS
-            </div>
-
-            <nav className="fx-sidebar-nav">
-              {businessNavigation.map(
-                (item) =>
-                  renderNavItem(item)
+              {managementNavigation.map((item) =>
+                renderNavItem(
+                  item,
+                  active === item.key
+                )
               )}
             </nav>
           </div>
@@ -450,9 +332,7 @@ export default function KitchenShell({
             }
           >
             <span className="fx-profile-avatar">
-              {String(
-                restaurantName
-              )
+              {String(restaurantName)
                 .slice(0, 1)
                 .toUpperCase()}
             </span>
@@ -544,41 +424,36 @@ export default function KitchenShell({
                 WORKSPACE
               </div>
 
-              {mainNavigation.map(
-                (item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    className={`fx-drawer-item ${
-                      active ===
-                      item.key
-                        ? "active"
-                        : ""
-                    }`}
-                    onClick={() =>
-                      go(item.path)
-                    }
-                  >
-                    <Icon
-                      name={
-                        item.icon
-                      }
-                      size={20}
-                    />
+              {mainNavigation.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`fx-drawer-item ${
+                    active === item.key
+                      ? "active"
+                      : ""
+                  }`}
+                  onClick={() =>
+                    go(item.path)
+                  }
+                >
+                  <Icon
+                    name={item.icon}
+                    size={20}
+                  />
 
-                    <span>
-                      {item.label}
-                    </span>
+                  <span>
+                    {item.label}
+                  </span>
 
-                    {item.badge &&
-                    item.badge > 0 ? (
-                      <b>
-                        {item.badge}
-                      </b>
-                    ) : null}
-                  </button>
-                )
-              )}
+                  {item.badge &&
+                  item.badge > 0 ? (
+                    <b>
+                      {item.badge}
+                    </b>
+                  ) : null}
+                </button>
+              ))}
             </div>
 
             {/* MANAGEMENT */}
@@ -588,73 +463,29 @@ export default function KitchenShell({
                 MANAGEMENT
               </div>
 
-              {managementNavigation.map(
-                (item) => (
-                  <button
-                    key={
-                      item.label
-                    }
-                    type="button"
-                    className={`fx-drawer-item ${
-                      active ===
-                      item.key
-                        ? "active"
-                        : ""
-                    }`}
-                    onClick={() => {
-                      if (
-                        item.path
-                      ) {
-                        go(
-                          item.path
-                        );
-                      }
-                    }}
-                  >
-                    <Icon
-                      name={
-                        item.icon
-                      }
-                      size={20}
-                    />
+              {managementNavigation.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`fx-drawer-item ${
+                    active === item.key
+                      ? "active"
+                      : ""
+                  }`}
+                  onClick={() =>
+                    go(item.path)
+                  }
+                >
+                  <Icon
+                    name={item.icon}
+                    size={20}
+                  />
 
-                    <span>
-                      {item.label}
-                    </span>
-                  </button>
-                )
-              )}
-            </div>
-
-            {/* BUSINESS */}
-
-            <div className="fx-drawer-section">
-              <div className="fx-drawer-section-title">
-                BUSINESS
-              </div>
-
-              {businessNavigation.map(
-                (item) => (
-                  <button
-                    key={
-                      item.label
-                    }
-                    type="button"
-                    className="fx-drawer-item fx-nav-disabled"
-                  >
-                    <Icon
-                      name={
-                        item.icon
-                      }
-                      size={20}
-                    />
-
-                    <span>
-                      {item.label}
-                    </span>
-                  </button>
-                )
-              )}
+                  <span>
+                    {item.label}
+                  </span>
+                </button>
+              ))}
             </div>
 
             <div className="fx-drawer-spacer" />
@@ -669,9 +500,7 @@ export default function KitchenShell({
               }
             >
               <span className="fx-profile-avatar">
-                {String(
-                  restaurantName
-                )
+                {String(restaurantName)
                   .slice(0, 1)
                   .toUpperCase()}
               </span>
@@ -784,9 +613,7 @@ export default function KitchenShell({
               }
             >
               <span className="fx-profile-avatar">
-                {String(
-                  restaurantName
-                )
+                {String(restaurantName)
                   .slice(0, 1)
                   .toUpperCase()}
               </span>
@@ -816,46 +643,38 @@ export default function KitchenShell({
           className="fx-bottom-nav"
           aria-label="Kitchen navigation"
         >
-          {mainNavigation.map(
-            (item) => (
-              <button
-                key={item.key}
-                type="button"
-                className={`fx-bottom-item ${
-                  active ===
-                  item.key
-                    ? "active"
-                    : ""
-                }`}
-                onClick={() =>
-                  go(item.path)
-                }
-              >
-                <span className="fx-bottom-icon">
-                  <Icon
-                    name={
-                      item.icon
-                    }
-                    size={20}
-                  />
+          {mainNavigation.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={`fx-bottom-item ${
+                active === item.key
+                  ? "active"
+                  : ""
+              }`}
+              onClick={() =>
+                go(item.path)
+              }
+            >
+              <span className="fx-bottom-icon">
+                <Icon
+                  name={item.icon}
+                  size={20}
+                />
 
-                  {item.badge &&
-                  item.badge > 0 ? (
-                    <b>
-                      {item.badge}
-                    </b>
-                  ) : null}
-                </span>
+                {item.badge &&
+                item.badge > 0 ? (
+                  <b>
+                    {item.badge}
+                  </b>
+                ) : null}
+              </span>
 
-                <span>
-                  {item.key ===
-                  "manage"
-                    ? "Tables"
-                    : item.label}
-                </span>
-              </button>
-            )
-          )}
+              <span>
+                {item.label}
+              </span>
+            </button>
+          ))}
         </nav>
       </div>
     </main>
