@@ -64,31 +64,22 @@ type ApiResponse = {
   orders: Order[];
 
   customerOrderCount: number;
-
   tableOrderCounts: Record<string, number>;
 
   dailyCustomerOrderCount: number;
-
   dailyTableOrderCounts: Record<string, number>;
 
   monthlyCustomerOrderCount: number;
-
   monthlyTableOrderCounts: Record<string, number>;
 };
 
 type TableCard = {
   table: Table;
-
   orders: Order[];
-
   total: number;
-
   itemCount: number;
-
   orderCount: number;
-
   activeOrderCount: number;
-
   lastOrderAt: string;
 };
 
@@ -125,19 +116,14 @@ function statusText(status: string) {
   switch (status) {
     case "NEW":
       return "New";
-
     case "PREPARING":
       return "Preparing";
-
     case "READY":
       return "Ready";
-
     case "SERVED":
       return "Served";
-
     case "CANCELLED":
       return "Cancelled";
-
     default:
       return status;
   }
@@ -167,17 +153,11 @@ function buildTableCard(
 
   return {
     table,
-
     orders: sortedOrders,
-
     total: Number(total.toFixed(2)),
-
     itemCount,
-
     orderCount: cumulativeCustomerCount,
-
     activeOrderCount: sortedOrders.length,
-
     lastOrderAt:
       sortedOrders[sortedOrders.length - 1]?.created_at ||
       new Date().toISOString(),
@@ -185,14 +165,10 @@ function buildTableCard(
 }
 
 /* ============================================================
-   INLINE ICONS
+   ICONS
 ============================================================ */
 
-function BellIcon({
-  size = 22,
-}: {
-  size?: number;
-}) {
+function BellIcon({ size = 22 }: { size?: number }) {
   return (
     <svg
       width={size}
@@ -211,11 +187,7 @@ function BellIcon({
   );
 }
 
-function ArrowLeftIcon({
-  size = 21,
-}: {
-  size?: number;
-}) {
+function ArrowLeftIcon({ size = 21 }: { size?: number }) {
   return (
     <svg
       width={size}
@@ -234,11 +206,7 @@ function ArrowLeftIcon({
   );
 }
 
-function ArrowRightIcon({
-  size = 17,
-}: {
-  size?: number;
-}) {
+function ArrowRightIcon({ size = 17 }: { size?: number }) {
   return (
     <svg
       width={size}
@@ -257,11 +225,7 @@ function ArrowRightIcon({
   );
 }
 
-function XIcon({
-  size = 18,
-}: {
-  size?: number;
-}) {
+function XIcon({ size = 18 }: { size?: number }) {
   return (
     <svg
       width={size}
@@ -293,57 +257,33 @@ export default function OrderDetailsPage() {
   const [restaurant, setRestaurant] =
     useState<Restaurant | null>(null);
 
-  const [orders, setOrders] =
-    useState<Order[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
 
-  /* =====================================================
-     TOTAL
-     ===================================================== */
+  const [customerOrderCount, setCustomerOrderCount] =
+    useState(0);
 
-  const [
-    customerOrderCount,
-    setCustomerOrderCount,
-  ] = useState(0);
+  const [tableOrderCounts, setTableOrderCounts] =
+    useState<Record<string, number>>({});
 
-  const [
-    tableOrderCounts,
-    setTableOrderCounts,
-  ] = useState<Record<string, number>>({});
+  const [dailyCustomerOrderCount, setDailyCustomerOrderCount] =
+    useState(0);
 
-  /* =====================================================
-     DAILY
-     ===================================================== */
+  const [dailyTableOrderCounts, setDailyTableOrderCounts] =
+    useState<Record<string, number>>({});
 
-  const [
-    dailyCustomerOrderCount,
-    setDailyCustomerOrderCount,
-  ] = useState(0);
+  const [monthlyCustomerOrderCount, setMonthlyCustomerOrderCount] =
+    useState(0);
 
-  const [
-    dailyTableOrderCounts,
-    setDailyTableOrderCounts,
-  ] = useState<Record<string, number>>({});
-
-  /* =====================================================
-     MONTHLY
-     ===================================================== */
-
-  const [
-    monthlyCustomerOrderCount,
-    setMonthlyCustomerOrderCount,
-  ] = useState(0);
-
-  const [
-    monthlyTableOrderCounts,
-    setMonthlyTableOrderCounts,
-  ] = useState<Record<string, number>>({});
+  const [monthlyTableOrderCounts, setMonthlyTableOrderCounts] =
+    useState<Record<string, number>>({});
 
   const [finishingBill, setFinishingBill] =
     useState(false);
 
-  const [loading, setLoading] =
-    useState(true);
-
+  /*
+   * IMPORTANT:
+   * No blocking loading screen anymore.
+   */
   const [refreshing, setRefreshing] =
     useState(false);
 
@@ -364,7 +304,7 @@ export default function OrderDetailsPage() {
 
   /* =====================================================
      NOTIFICATIONS
-     ===================================================== */
+  ===================================================== */
 
   const [notificationOpen, setNotificationOpen] =
     useState(false);
@@ -372,15 +312,27 @@ export default function OrderDetailsPage() {
   const [notificationMessageVisible, setNotificationMessageVisible] =
     useState(false);
 
-  const [previousNewOrderCount, setPreviousNewOrderCount] =
-    useState<number | null>(null);
+  /*
+   * Ref instead of state.
+   *
+   * This is important because loadOrders no longer
+   * gets recreated every time the new-order count changes.
+   */
+  const previousNewOrderCount =
+    useRef<number | null>(null);
 
   const [hasNewOrderNotification, setHasNewOrderNotification] =
     useState(false);
 
+  const notificationTimeoutRef =
+    useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const requestControllerRef =
+    useRef<AbortController | null>(null);
+
   /* =====================================================
      SELECTED TABLE REF
-     ===================================================== */
+  ===================================================== */
 
   useEffect(() => {
     selectedTableRef.current =
@@ -388,20 +340,46 @@ export default function OrderDetailsPage() {
   }, [selectedTable]);
 
   /* =====================================================
+     CLEANUP
+  ===================================================== */
+
+  useEffect(() => {
+    return () => {
+      requestControllerRef.current?.abort();
+
+      if (notificationTimeoutRef.current) {
+        clearTimeout(
+          notificationTimeoutRef.current
+        );
+      }
+    };
+  }, []);
+
+  /* =====================================================
      LOAD ORDERS
-     ===================================================== */
+  ===================================================== */
 
   const loadOrders = useCallback(
     async (silent = false) => {
-      if (!slug) {
-        return;
-      }
+      if (!slug) return;
+
+      /*
+       * Cancel previous request.
+       *
+       * Prevents an older slow request from
+       * overwriting newer data.
+       */
+      requestControllerRef.current?.abort();
+
+      const controller =
+        new AbortController();
+
+      requestControllerRef.current =
+        controller;
 
       try {
         if (silent) {
           setRefreshing(true);
-        } else {
-          setLoading(true);
         }
 
         const response = await fetch(
@@ -411,6 +389,7 @@ export default function OrderDetailsPage() {
           {
             method: "GET",
             cache: "no-store",
+            signal: controller.signal,
           }
         );
 
@@ -424,19 +403,21 @@ export default function OrderDetailsPage() {
           );
         }
 
+        if (controller.signal.aborted) {
+          return;
+        }
+
         setRestaurant(data.restaurant);
 
-        /* TOTAL */
-
         setCustomerOrderCount(
-          Number(data.customerOrderCount || 0)
+          Number(
+            data.customerOrderCount || 0
+          )
         );
 
         setTableOrderCounts(
           data.tableOrderCounts || {}
         );
-
-        /* DAILY */
 
         setDailyCustomerOrderCount(
           Number(
@@ -447,8 +428,6 @@ export default function OrderDetailsPage() {
         setDailyTableOrderCounts(
           data.dailyTableOrderCounts || {}
         );
-
-        /* MONTHLY */
 
         setMonthlyCustomerOrderCount(
           Number(
@@ -465,7 +444,7 @@ export default function OrderDetailsPage() {
 
         /* =================================================
            NEW ORDER NOTIFICATION
-           ================================================= */
+        ================================================= */
 
         const freshNewOrders =
           freshOrders.filter(
@@ -476,50 +455,49 @@ export default function OrderDetailsPage() {
         const newOrderCount =
           freshNewOrders.length;
 
+        const previousCount =
+          previousNewOrderCount.current;
+
         /*
          * First load:
-         * Do not show a notification just because
-         * old NEW orders already exist.
+         * silently remember current count.
          */
-        if (
-          previousNewOrderCount === null
-        ) {
-          setPreviousNewOrderCount(
-            newOrderCount
-          );
+        if (previousCount === null) {
+          previousNewOrderCount.current =
+            newOrderCount;
         } else if (
-          newOrderCount >
-          previousNewOrderCount
+          newOrderCount > previousCount
         ) {
           setHasNewOrderNotification(true);
           setNotificationMessageVisible(true);
 
-          /*
-           * Automatically hide the small
-           * notification message after 6 seconds.
-           */
-          window.setTimeout(() => {
-            setNotificationMessageVisible(false);
-          }, 6000);
+          if (
+            notificationTimeoutRef.current
+          ) {
+            clearTimeout(
+              notificationTimeoutRef.current
+            );
+          }
 
-          setPreviousNewOrderCount(
-            newOrderCount
-          );
-        } else if (
-          newOrderCount === 0
-        ) {
-          setPreviousNewOrderCount(0);
+          notificationTimeoutRef.current =
+            setTimeout(() => {
+              setNotificationMessageVisible(
+                false
+              );
+            }, 6000);
+
+          previousNewOrderCount.current =
+            newOrderCount;
         } else {
-          setPreviousNewOrderCount(
-            newOrderCount
-          );
+          previousNewOrderCount.current =
+            newOrderCount;
         }
 
         setOrders(freshOrders);
 
         /* =================================================
-           UPDATE OPEN DRAWER
-           ================================================= */
+           UPDATE OPEN BILL
+        ================================================= */
 
         const currentSelected =
           selectedTableRef.current;
@@ -552,11 +530,24 @@ export default function OrderDetailsPage() {
             setSelectedTable(
               updatedCard
             );
+          } else {
+            setSelectedTable(null);
           }
         }
 
         setError("");
       } catch (err: any) {
+        /*
+         * Abort errors are expected when a newer
+         * request replaces an older one.
+         */
+        if (
+          err?.name ===
+          "AbortError"
+        ) {
+          return;
+        }
+
         console.error(
           "Order details loading error:",
           err
@@ -567,27 +558,34 @@ export default function OrderDetailsPage() {
             "Unable to load order details"
         );
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        if (!controller.signal.aborted) {
+          setRefreshing(false);
+        }
       }
     },
-    [
-      slug,
-      previousNewOrderCount,
-    ]
+    [slug]
   );
 
   /* =====================================================
      INITIAL LOAD
-     ===================================================== */
+  ===================================================== */
 
   useEffect(() => {
+    /*
+     * Background load.
+     *
+     * UI does NOT wait for this.
+     */
     loadOrders(false);
+
+    return () => {
+      requestControllerRef.current?.abort();
+    };
   }, [loadOrders]);
 
   /* =====================================================
      POLLING
-     ===================================================== */
+  ===================================================== */
 
   useEffect(() => {
     if (!slug) return;
@@ -603,8 +601,8 @@ export default function OrderDetailsPage() {
   }, [loadOrders, slug]);
 
   /* =====================================================
-     NEW ORDER COUNT
-     ===================================================== */
+     NEW ORDERS
+  ===================================================== */
 
   const newOrders = useMemo(() => {
     return orders
@@ -627,8 +625,8 @@ export default function OrderDetailsPage() {
     newOrders.length;
 
   /* =====================================================
-     NOTIFICATION CLICK
-     ===================================================== */
+     OPEN LATEST NEW ORDER
+  ===================================================== */
 
   function openLatestNewOrder() {
     const latestOrder =
@@ -668,7 +666,7 @@ export default function OrderDetailsPage() {
 
   /* =====================================================
      GROUP BY TABLE
-     ===================================================== */
+  ===================================================== */
 
   const tableCards =
     useMemo(() => {
@@ -676,9 +674,7 @@ export default function OrderDetailsPage() {
         new Map<string, Order[]>();
 
       for (const order of orders) {
-        if (!order.table) {
-          continue;
-        }
+        if (!order.table) continue;
 
         const existing =
           tableMap.get(
@@ -704,9 +700,7 @@ export default function OrderDetailsPage() {
         const table =
           tableOrders[0]?.table;
 
-        if (!table) {
-          continue;
-        }
+        if (!table) continue;
 
         cards.push(
           buildTableCard(
@@ -738,7 +732,7 @@ export default function OrderDetailsPage() {
 
   /* =====================================================
      SEARCH + FILTER
-     ===================================================== */
+  ===================================================== */
 
   const filteredCards =
     useMemo(() => {
@@ -774,8 +768,8 @@ export default function OrderDetailsPage() {
     ]);
 
   /* =====================================================
-     COMBINED BILL ITEMS
-     ===================================================== */
+     BILL ITEMS
+  ===================================================== */
 
   const billItems =
     useMemo(() => {
@@ -815,17 +809,14 @@ export default function OrderDetailsPage() {
               item.name,
               {
                 name: item.name,
-
                 price:
                   Number(
                     item.price
                   ),
-
                 quantity:
                   Number(
                     item.quantity
                   ),
-
                 total:
                   Number(item.price) *
                   Number(
@@ -843,11 +834,11 @@ export default function OrderDetailsPage() {
     }, [selectedTable]);
 
   /* =====================================================
-     GLOBAL STATS
-     ===================================================== */
+     STATS
+  ===================================================== */
 
-  const stats = useMemo(() => {
-    return {
+  const stats = useMemo(
+    () => ({
       customerOrders:
         customerOrderCount,
 
@@ -856,16 +847,17 @@ export default function OrderDetailsPage() {
 
       monthlyCustomerOrders:
         monthlyCustomerOrderCount,
-    };
-  }, [
-    customerOrderCount,
-    dailyCustomerOrderCount,
-    monthlyCustomerOrderCount,
-  ]);
+    }),
+    [
+      customerOrderCount,
+      dailyCustomerOrderCount,
+      monthlyCustomerOrderCount,
+    ]
+  );
 
   /* =====================================================
-     CLOSE DRAWER
-     ===================================================== */
+     CLOSE BILL
+  ===================================================== */
 
   function closeBill() {
     setSelectedTable(null);
@@ -873,14 +865,13 @@ export default function OrderDetailsPage() {
 
   /* =====================================================
      DONE
-     ===================================================== */
+  ===================================================== */
 
   async function handleDone() {
-    if (finishingBill) {
-      return;
-    }
-
-    if (!selectedTable) {
+    if (
+      finishingBill ||
+      !selectedTable
+    ) {
       return;
     }
 
@@ -892,7 +883,6 @@ export default function OrderDetailsPage() {
       console.error(
         "Billing session ID missing"
       );
-
       return;
     }
 
@@ -904,12 +894,10 @@ export default function OrderDetailsPage() {
           "/api/order-details",
           {
             method: "PATCH",
-
             headers: {
               "Content-Type":
                 "application/json",
             },
-
             body: JSON.stringify({
               slug,
               billingSessionId,
@@ -944,6 +932,9 @@ export default function OrderDetailsPage() {
 
       setSelectedTable(null);
 
+      /*
+       * Background refresh.
+       */
       await loadOrders(true);
     } catch (error: any) {
       console.error(
@@ -961,31 +952,17 @@ export default function OrderDetailsPage() {
   }
 
   /* =====================================================
-     LOADING
-     ===================================================== */
-
-  if (loading) {
-    return (
-      <div className="fx-order-details-page">
-        <div className="fx-od-loading">
-          <div className="fx-od-spinner" />
-
-          <p>
-            Loading table orders...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  /* =====================================================
      UI
-     ===================================================== */
+     
+     NO LOADING SCREEN HERE.
+     
+     Page renders immediately.
+  ===================================================== */
 
   return (
     <>
       {/* ===================================================
-          NOTIFICATION MESSAGE
+          NEW ORDER TOAST
       =================================================== */}
 
       {notificationMessageVisible &&
@@ -1025,12 +1002,10 @@ export default function OrderDetailsPage() {
       <div className="fx-order-details-page">
         {/* =================================================
             HEADER
-            ================================================= */}
+        ================================================= */}
 
         <header className="fx-od-header">
           <div className="fx-od-header-left">
-            {/* BACK TO DASHBOARD */}
-
             <button
               type="button"
               className="fx-od-back-button"
@@ -1063,8 +1038,6 @@ export default function OrderDetailsPage() {
             </p>
           </div>
 
-          {/* HEADER ACTIONS */}
-
           <div className="fx-od-header-actions">
             {/* NOTIFICATION */}
 
@@ -1093,18 +1066,14 @@ export default function OrderDetailsPage() {
               >
                 <BellIcon size={21} />
 
-                {newOrderCount >
-                  0 && (
+                {newOrderCount > 0 && (
                   <span className="fx-od-notification-badge">
-                    {newOrderCount >
-                    99
+                    {newOrderCount > 99
                       ? "99+"
                       : newOrderCount}
                   </span>
                 )}
               </button>
-
-              {/* NOTIFICATION PANEL */}
 
               {notificationOpen && (
                 <>
@@ -1253,11 +1222,9 @@ export default function OrderDetailsPage() {
 
         {/* =================================================
             STATS
-            ================================================= */}
+        ================================================= */}
 
         <section className="fx-od-summary-grid">
-          {/* DAILY */}
-
           <div className="fx-od-summary-card highlight">
             <span>
               Daily Orders by Table
@@ -1274,8 +1241,6 @@ export default function OrderDetailsPage() {
             </small>
           </div>
 
-          {/* MONTHLY */}
-
           <div className="fx-od-summary-card highlight">
             <span>
               Monthly Orders by Table
@@ -1291,8 +1256,6 @@ export default function OrderDetailsPage() {
               Current month
             </small>
           </div>
-
-          {/* TOTAL */}
 
           <div className="fx-od-summary-card highlight">
             <span>
@@ -1311,7 +1274,7 @@ export default function OrderDetailsPage() {
 
         {/* =================================================
             TOOLBAR
-            ================================================= */}
+        ================================================= */}
 
         <section className="fx-od-toolbar">
           <div className="fx-od-search">
@@ -1366,7 +1329,7 @@ export default function OrderDetailsPage() {
 
         {/* =================================================
             ERROR
-            ================================================= */}
+        ================================================= */}
 
         {error && (
           <div className="fx-od-error">
@@ -1391,7 +1354,7 @@ export default function OrderDetailsPage() {
 
         {/* =================================================
             EMPTY
-            ================================================= */}
+        ================================================= */}
 
         {!error &&
           filteredCards.length ===
@@ -1415,7 +1378,7 @@ export default function OrderDetailsPage() {
 
         {/* =================================================
             TABLE CARDS
-            ================================================= */}
+        ================================================= */}
 
         {!error &&
           filteredCards.length >
@@ -1523,7 +1486,7 @@ export default function OrderDetailsPage() {
 
       {/* =====================================================
           BILL DRAWER
-          ===================================================== */}
+      ===================================================== */}
 
       {selectedTable && (
         <div
@@ -1716,8 +1679,6 @@ export default function OrderDetailsPage() {
                           </span>
                         </div>
 
-                        {/* CUSTOMER */}
-
                         <span>
                           {order.customer
                             ? `Customer ${order.customer.slot_code}`
@@ -1729,8 +1690,6 @@ export default function OrderDetailsPage() {
                             order.created_at
                           )}
                         </span>
-
-                        {/* ITEMS */}
 
                         <div className="fx-bill-order-items">
                           {(
@@ -1755,58 +1714,13 @@ export default function OrderDetailsPage() {
                           )}
                         </div>
 
-                        {/* CUSTOMER NEED */}
-
                         {order.need && (
-                          <div
-                            style={{
-                              marginTop:
-                                "8px",
-                              padding:
-                                "9px 10px",
-                              borderRadius:
-                                "10px",
-                              background:
-                                "#fffdf5",
-                              border:
-                                "1px solid #eee7c9",
-                            }}
-                          >
-                            <small
-                              style={{
-                                display:
-                                  "block",
-                                marginBottom:
-                                  "3px",
-                                fontSize:
-                                  "9px",
-                                fontWeight:
-                                  800,
-                                letterSpacing:
-                                  ".08em",
-                                textTransform:
-                                  "uppercase",
-                                color:
-                                  "#8b805c",
-                              }}
-                            >
+                          <div className="fx-bill-customer-need">
+                            <small>
                               Customer need
                             </small>
 
-                            <span
-                              style={{
-                                display:
-                                  "block",
-                                fontSize:
-                                  "12px",
-                                lineHeight:
-                                  1.45,
-                                fontWeight:
-                                  600,
-                                color:
-                                  "#403b29",
-                              }}
-                            >
+                            <span>
                               {order.need}
                             </span>
                           </div>
@@ -1845,9 +1759,8 @@ export default function OrderDetailsPage() {
       )}
 
       {/* =====================================================
-          NOTIFICATION UI STYLES
-          Self-contained for this page
-          ===================================================== */}
+          PAGE-SPECIFIC STYLES
+      ===================================================== */}
 
       <style jsx>{`
         .fx-od-header {
@@ -2158,6 +2071,32 @@ export default function OrderDetailsPage() {
         .fx-od-toast-arrow {
           flex: 0 0 auto;
           color: #9aa1aa;
+        }
+
+        .fx-bill-customer-need {
+          margin-top: 8px;
+          padding: 9px 10px;
+          border-radius: 10px;
+          background: #fffdf5;
+          border: 1px solid #eee7c9;
+        }
+
+        .fx-bill-customer-need small {
+          display: block;
+          margin-bottom: 3px;
+          font-size: 9px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: #8b805c;
+        }
+
+        .fx-bill-customer-need span {
+          display: block;
+          font-size: 12px;
+          line-height: 1.45;
+          font-weight: 600;
+          color: #403b29;
         }
 
         @keyframes fxNotificationIn {
